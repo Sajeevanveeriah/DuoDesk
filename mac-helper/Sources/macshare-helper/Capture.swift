@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // Event tap for shared cursor/keyboard: edge push at home, Right-Option double-tap,
 // capture (swallow + report as `ev`) per device class, dead-man, return edge while driven.
 // Safety rules from Beamer's design: the callback only does cheap work and enqueues output; our
@@ -80,6 +81,8 @@ final class Capture {
   // the bounding box, as `offset`): the edge and the way back only cross inside them. nil: anywhere.
   var edgeZones: [ClosedRange<Double>]?
   var returnZones: [ClosedRange<Double>]?
+  var edgeZonesBySide: [String: [ClosedRange<Double>]] = [:]
+  var returnZonesBySide: [String: [ClosedRange<Double>]] = [:]
   // No new crossing within `cooldown` of the last one, either way (kvmConfig `cooldownMs`,
   // KVM_CROSS_COOLDOWN_MS). After arriving, the edge it came through only counts once the pointer
   // moved 8 pt inward or `guardWindow` passed, so the end of a flick doesn't bounce straight back.
@@ -92,6 +95,9 @@ final class Capture {
   private var lastCross = 0.0
   private var arrival: (side: String, at: Double, inward: Double)?
   private var dragPbCount = -1             // drag pasteboard changeCount when the left button went down
+  private var edgeLogLimiter = EdgeLogLimiter()
+  private var stagedFiles: (side: String, paths: [String], at: Double)?
+  private var processingDrag = false
   // hotkey: a right-hand modifier, double-tapped (kvmConfig `hotkey`; default Right Option, kVK 0x3D, device flag 0x40)
   private var hkStage = 0, hkAt = 0.0
   private var hkKeys: [UInt16: UInt64] = [0x3D: 0x40] // keycode -> device flag ("Alt" = both Option keys)
@@ -127,6 +133,7 @@ final class Capture {
 
 #if MULTI
   func configure(sides: [String], resistance: Double, edgeEnabled: Bool, keyboard: Bool, dragFiles: Bool, hotkey: String, cooldown: Double) {
+    stagedFiles = nil
     // "AltRight", "AltLeft" or "Alt" (either side); same for Control, Shift, Meta.
     let names = ["Alt", "Control", "Shift", "Meta"].contains(hotkey) ? [hotkey + "Left", hotkey + "Right"] : [hotkey]
     var keys: [UInt16: UInt64] = [:]
@@ -146,6 +153,7 @@ final class Capture {
   }
 #else
   func configure(side: String, resistance: Double, edgeEnabled: Bool, keyboard: Bool, dragFiles: Bool, hotkey: String, cooldown: Double) {
+    stagedFiles = nil
     // "AltRight", "AltLeft" or "Alt" (either side); same for Control, Shift, Meta.
     let names = ["Alt", "Control", "Shift", "Meta"].contains(hotkey) ? [hotkey + "Left", hotkey + "Right"] : [hotkey]
     var keys: [UInt16: UInt64] = [:]
@@ -254,7 +262,7 @@ final class Capture {
     var hit: (side: String, offset: Double)? = nil
     for side in returnSides {
       var st = retBy[side] ?? (push: 0.0, at: 0.0, since: 0.0)
-      let off = push(&st, p, dx, dy, side, returnResistance, returnZones)
+      let off = push(&st, p, dx, dy, side, returnResistance, returnZonesBySide[side] ?? returnZones)
       retBy[side] = st
       if hit == nil, let off = off { hit = (side: side, offset: off) }
     }
@@ -272,7 +280,7 @@ final class Capture {
     var hit: (side: String, offset: Double)? = nil
     for side in sides {
       var st = edgeBy[side] ?? (push: 0.0, at: 0.0, since: 0.0)
-      let off = push(&st, p, dx, dy, side, resistance, edgeZones)
+      let off = push(&st, p, dx, dy, side, resistance, edgeZonesBySide[side] ?? edgeZones)
       edgeBy[side] = st
       if hit == nil, let off = off { hit = (side: side, offset: off) }
     }
@@ -324,21 +332,30 @@ final class Capture {
     let out = side == "right" ? dx : side == "left" ? -dx : side == "bottom" ? dy : -dy
     let t = now()
     if t - st.at > 0.3 { st.push = 0 }
-    if t - lastCross < cooldown {
+    if let reason = EdgePolicy.guardReason(buttonsHeld: processingDrag || NSEvent.pressedMouseButtons != 0 || !injector.heldButtons.isEmpty,
+                                          elapsed: t - lastCross, cooldown: cooldown) {
+      refused(reason, p, side: side, out: out)
       st.push = 0
       return nil
     }
     if var a = arrival, a.side == side {
       if out < 0 { a.inward -= out }
-      if t - a.at < guardWindow && a.inward < 8 {
+      if EdgePolicy.arrivalBlocked(elapsed: t - a.at, inward: a.inward, window: guardWindow) {
+        refused("arrival", p, side: side, out: out)
         arrival = a
         st.push = 0
         return nil
       }
       arrival = nil
     }
-    guard out > 0, Screens.isOuterEdge(p, side: side),
-          zones.map({ z in z.contains { $0.contains(Screens.offset(p, side: side)) } }) ?? true else {
+    guard out > 0 else { st.push = 0; return nil }
+    guard Screens.isOuterEdge(p, side: side) else {
+      refused("not outer edge", p, side: side, out: out)
+      st.push = 0
+      return nil
+    }
+    guard EdgePolicy.inZone(Screens.offset(p, side: side), zones) else {
+      refused("outside the zone", p, side: side, out: out)
       st.push = 0
       return nil
     }
@@ -348,6 +365,14 @@ final class Capture {
     guard st.push >= resistance, resistance <= 0 || t - st.since >= dwell else { return nil }
     st.push = 0
     return Screens.offset(p, side: side)
+  }
+
+  // One diagnostic globally every two seconds, only for outward pushes at a monitor edge.
+  private func refused(_ reason: String, _ p: CGPoint, side: String, out: Double) {
+    guard out > 0, EdgePolicy.atEdge(Double(p.x), Double(p.y), side: side, displays: Screens.edgeRects()),
+          edgeLogLimiter.allow(now()) else { return }
+    let layout = Screens.displays().map { "[\($0.minX),\($0.minY),\($0.width),\($0.height)]" }.joined(separator: ",")
+    log("edge refused reason=\(reason) edge=\(side) position=\(p.x),\(p.y) layout=\(layout)")
   }
 
   // MARK: tap callback
@@ -500,6 +525,8 @@ final class Capture {
   }
 
   private func onMouse(_ type: CGEventType, _ e: CGEvent) -> Bool {
+    processingDrag = type == .leftMouseDragged || type == .rightMouseDragged || type == .otherMouseDragged
+    defer { processingDrag = false }
     let dx = e.getDoubleValueField(.mouseEventDeltaX), dy = e.getDoubleValueField(.mouseEventDeltaY)
     let isDown = type == .leftMouseDown || type == .rightMouseDown || type == .otherMouseDown
     let isUp = type == .leftMouseUp || type == .rightMouseUp || type == .otherMouseUp
@@ -535,49 +562,47 @@ final class Capture {
     }
 
     if type == .leftMouseDown { dragPbCount = NSPasteboard(name: .drag).changeCount }
-    // A file drag pushed through the crossing edge carries the files over.
+    // Staged copy: dragging to the edge never changes cursor ownership. Only a physical
+    // left-button release at that edge emits a separate file transfer request.
+    if type == .leftMouseDragged, !capturing, edgeEnabled, dragFiles {
 #if MULTI
-    if type == .leftMouseDragged, !capturing, edgeEnabled, dragFiles,
-       let hit = edgeCrossing(e.location, dx: dx, dy: dy) {
-      let paths = draggedFiles()
-      log("edge: drag through the edge, \(paths.count) file(s) on the drag pasteboard")
-      if !paths.isEmpty {
-        startCapture(mouse: true, keyboard: cfgKeyboard)
-        DragIn.shared.swallowLocalDrag(at: e.location) // Finder's drag ends here, quietly
-        Flash.shared.leave(at: e.location, side: hit.side)
-        emit(["event": "edge", "side": hit.side, "offset": hit.offset, "drag": ["paths": paths]])
-        return true
-      }
-    }
+      let watched = sides
 #else
-    if type == .leftMouseDragged, !capturing, edgeEnabled, dragFiles,
-       let off = push(&edge, e.location, dx, dy, side, resistance, edgeZones) {
-      let paths = draggedFiles()
-      log("edge: drag through the edge, \(paths.count) file(s) on the drag pasteboard")
-      if !paths.isEmpty {
-        startCapture(mouse: true, keyboard: cfgKeyboard)
-        DragIn.shared.swallowLocalDrag(at: e.location) // Finder's drag ends here, quietly
-        Flash.shared.leave(at: e.location, side: side)
-        emit(["event": "edge", "offset": off, "drag": ["paths": paths]])
-        return true
+      let watched = [side]
+#endif
+      stagedFiles = nil
+      for edgeSide in watched {
+        let activeZones = edgeZonesBySide[edgeSide] ?? edgeZones
+        let out = edgeSide == "right" ? dx : edgeSide == "left" ? -dx : edgeSide == "bottom" ? dy : -dy
+        refused("button", e.location, side: edgeSide, out: out)
+        if Screens.isOuterEdge(e.location, side: edgeSide),
+           activeZones.map({ z in z.contains { $0.contains(Screens.offset(e.location, side: edgeSide)) } }) ?? true {
+          let paths = draggedFiles()
+          if !paths.isEmpty { stagedFiles = (edgeSide, paths, now()) }
+        }
       }
     }
-#endif
-    if type == .mouseMoved {
-      // The system's own button state: counting downs and ups here stuck at 1 when the tap missed
-      // an up (disabled by a timeout meanwhile), and nothing crossed again until a restart.
+    if type == .leftMouseUp, let staged = stagedFiles {
+      stagedFiles = nil
+      if !capturing, edgeEnabled, dragFiles, now() - staged.at < 2,
+         (NSEvent.pressedMouseButtons & ~1) == 0, injector.heldButtons.isEmpty,
+         Screens.isOuterEdge(e.location, side: staged.side) {
+        emit(["event": "fileHandoff", "paths": staged.paths, "side": staged.side])
+        log("file handoff: physical release, \(staged.paths.count) file(s); cursor stays here")
+      }
+    }
+    if isDown { stagedFiles = nil }
+    if type == .mouseMoved || type == .leftMouseDragged || type == .rightMouseDragged || type == .otherMouseDragged {
 #if MULTI
-      if !capturing, edgeEnabled, NSEvent.pressedMouseButtons == 0,
-         let hit = edgeCrossing(e.location, dx: dx, dy: dy) {
-        startCapture(mouse: true, keyboard: cfgKeyboard) // capture first, so no motion leaks
+      if !capturing, edgeEnabled, let hit = edgeCrossing(e.location, dx: dx, dy: dy) {
+        startCapture(mouse: true, keyboard: cfgKeyboard)
         Flash.shared.leave(at: e.location, side: hit.side)
         emit(["event": "edge", "side": hit.side, "offset": hit.offset])
         return true
       }
 #else
-      if !capturing, edgeEnabled, NSEvent.pressedMouseButtons == 0,
-         let off = push(&edge, e.location, dx, dy, side, resistance, edgeZones) {
-        startCapture(mouse: true, keyboard: cfgKeyboard) // capture first, so no motion leaks
+      if !capturing, edgeEnabled, let off = push(&edge, e.location, dx, dy, side, resistance, edgeZones) {
+        startCapture(mouse: true, keyboard: cfgKeyboard)
         Flash.shared.leave(at: e.location, side: side)
         emit(["event": "edge", "offset": off])
         return true

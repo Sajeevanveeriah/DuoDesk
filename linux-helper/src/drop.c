@@ -1,16 +1,8 @@
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
-// Drag files across the edge, this computer → the other one (X11; port of windows-helper's
-// DropEdge.cs). While the left button is held at home with edge crossing on, an invisible strip
-// covers the outer edge facing the other computer: an XDND drop target. A file drag that enters
-// it is accepted as a copy and its paths are read at once (XDND lets a target ask for the data
-// before the drop); then the drag crosses (capture.c, capture_drag_cross). X can't end another
-// client's drag the way Windows' marked button-up does, so the file manager's drag stays parked
-// on the strip (a pointer barrier holds the pointer there) while motion and the button go to the
-// other computer; the real button-up drops it there, and here on the strip, which does nothing.
-// While the other computer drives this one the strip covers the way back instead, for its button
-// held in a file manager drag here: caught the same way, the input goes home with the files
-// (capture_drag_return) and that button is let go on the strip.
-// The window and its XDND messages live on the injection connection (events from main.c).
+// DuoDesk modifications, 2026. GPL-3.0.
+// Explicit file handoff on X11: an XDND target at the outer edge stages file paths.
+// Only the user's drop emits fileHandoff. The source action is always Copy.
+// It never captures input or releases a mouse button; the pointer stays here.
 #include "helper.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -26,6 +18,7 @@ static int stripSide, stripBack; // the side it covers, and whether as the way b
 static Window source;   // the drag over the strip
 static int hasUris, requested, taken;
 static double takenAt;
+static char *handoffPaths;
 static Atom A_AWARE, A_ENTER, A_POSITION, A_STATUS, A_LEAVE, A_DROP, A_FINISHED, A_SELECTION, A_TYPELIST, A_COPY, A_URIS, A_PROP;
 
 void drop_config(const JObj *c) { dragFiles = jbool(c, "dragFiles", 1); }
@@ -46,7 +39,7 @@ static void make(void) {
   XChangeProperty(dpy_in, strip, A_AWARE, XA_ATOM, 32, PropModeReplace, (unsigned char *)&version, 1);
   Atom type = atom("_NET_WM_WINDOW_TYPE_DND"); // no shadow from compositors
   XChangeProperty(dpy_in, strip, atom("_NET_WM_WINDOW_TYPE"), XA_ATOM, 32, PropModeReplace, (unsigned char *)&type, 1);
-  XStoreName(dpy_in, strip, "TwinDesk drop edge");
+  XStoreName(dpy_in, strip, "DuoDesk drop edge");
 }
 
 static void hide(void) {
@@ -57,6 +50,7 @@ static void hide(void) {
 }
 
 static void reset(void) {
+  free(handoffPaths); handoffPaths = NULL;
   source = 0;
   hasUris = requested = taken = 0;
 }
@@ -167,14 +161,8 @@ static void got_uris(void) {
   out[len] = 0;
   XFree(data);
   if (count && !taken && !capture_active()) {
-    Window rr, cr;
-    int x = 0, y = 0, wx, wy;
-    unsigned m;
-    XQueryPointer(dpy_in, root_in, &rr, &cr, &x, &y, &wx, &wy, &m);
-    taken = 1;
-    takenAt = now_ms();
-    if (stripBack) capture_drag_return(out, x, y, stripSide);
-    else capture_drag_cross(out, x, y, sx, sy, sw, sh);
+    free(handoffPaths);
+    handoffPaths = strdup(out); // staged only; transfer starts after the explicit XDND drop
   }
   free(out);
 }
@@ -214,14 +202,23 @@ void drop_xevent(XEvent *e) {
     if (!taken) { reset(); hide(); }
   } else if (t == A_DROP) {
     Window src = (Window)l[0];
-    int was = taken;
+    int was = handoffPaths != NULL;
+    if (was) {
+      size_t cap = strlen(handoffPaths) + 128;
+      char *msg = malloc(cap);
+      if (msg) {
+        snprintf(msg, cap, "{\"event\":\"fileHandoff\",\"side\":\"%s\",\"paths\":%s}", side_name(stripSide), handoffPaths);
+        emit(msg); free(msg);
+      } else was = 0;
+    }
     reply(src, A_FINISHED, was ? 1 : 0, was ? (long)A_COPY : 0);
     reset();
     hide();
-    if (was) capture_drag_dropped(); // the file manager let go: capture can take its grabs now
+    // A file handoff never captures input or synthesises a button release.
   }
 }
 
 void drop_shutdown(void) {
+  free(handoffPaths); handoffPaths = NULL;
   if (strip) { XDestroyWindow(dpy_in, strip); strip = 0; shown = 0; XFlush(dpy_in); }
 }

@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // Builds the Linux packages (`npm run dist`): the helper, a staging folder with the same
 // layout as the repo (linux/, shared/, linux-helper/bin/), then electron-builder → AppImage and
 // .deb (x64). Same approach as windows/installer/build.js: the layout is kept so
@@ -54,6 +55,7 @@ async function main() {
   for (const name of fs.readdirSync(path.join(ROOT, 'shared'))) {
     if (/\.(js|css|html)$/.test(name)) copy(path.join(ROOT, 'shared', name), path.join(STAGE, 'shared', name));
   }
+  if (fs.existsSync(path.join(ROOT, 'shared', 'fonts'))) copy(path.join(ROOT, 'shared', 'fonts'), path.join(STAGE, 'shared', 'fonts'));
   copy(path.join(ROOT, 'linux-helper', 'bin', 'macshare-linuxhelper'), path.join(STAGE, 'linux-helper', 'bin', 'macshare-linuxhelper'));
   // Multi-device's helper (several watched edges, docs/multi-device.md): the same sources built with -DMULTI.
   copy(path.join(ROOT, 'linux-helper', 'bin', 'macshare-linuxhelper-multi'), path.join(STAGE, 'linux-helper', 'bin', 'macshare-linuxhelper-multi'));
@@ -91,16 +93,17 @@ async function main() {
   fs.writeFileSync(path.join(STAGE, 'package.json'), JSON.stringify({
     name: 'twindesk', productName: pkg.productName, version: pkg.version, description: pkg.description,
     license: pkg.license, author: { name: 'inukaasith', email: 'inukaasith@users.noreply.github.com' },
-    homepage: 'https://github.com/InukaAsith/TwinDesk', main: 'linux/main.js', dependencies: pkg.dependencies,
+    homepage: 'https://github.com/Sajeevanveeriah/DuoDesk', main: 'linux/main.js', dependencies: pkg.dependencies,
   }, null, 2));
 
   console.log('Packaging…');
   await builder.build({
+    publish: 'never',
     targets: builder.Platform.LINUX.createTarget(['AppImage', 'deb'], builder.Arch.x64),
     projectDir: LIN,
     config: {
       appId: 'org.macshare.linux',
-      productName: 'TwinDesk',
+      productName: 'DuoDesk',
       copyright: 'Copyright (C) 2026 inukaasith',
       electronVersion,
       directories: { app: STAGE, output: path.join(LIN, 'dist') },
@@ -112,8 +115,8 @@ async function main() {
         category: 'Utility',
         synopsis: 'Share mouse, keyboard, clipboard, files and screens with your other computer',
         maintainer: 'inukaasith',
-        desktop: { entry: { Name: 'TwinDesk', StartupWMClass: 'TwinDesk', Keywords: 'KVM;mouse;keyboard;clipboard;screen;share;' } },
-        artifactName: 'TwinDesk-${version}-${arch}.${ext}',
+        desktop: { entry: { Name: 'DuoDesk', StartupWMClass: 'DuoDesk', Keywords: 'KVM;mouse;keyboard;clipboard;screen;share;' } },
+        artifactName: 'DuoDesk-${version}-${arch}.${ext}',
       },
       deb: {
         // Electron's own needs plus what TwinDesk calls: openssl (host certificate), pactl (sound),

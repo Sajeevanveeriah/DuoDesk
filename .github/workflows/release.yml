@@ -1,0 +1,83 @@
+name: DuoDesk builds and release
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: duodesk-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - name: Unit tests
+        run: npm test
+      - name: Website tests and static validation
+        run: |
+          npm ci --prefix website
+          npm test --prefix website
+          npm run build --prefix website
+      - name: Isolated mock-window tests
+        run: xvfb-run --auto-servernum npm run test:ui
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: renderer-validation
+          path: test/output/
+  android:
+    needs: validate
+    uses: ./.github/workflows/build-android.yml
+    with:
+      release: ${{ startsWith(github.ref, 'refs/tags/v') }}
+    secrets: inherit
+  windows:
+    needs: android
+    uses: ./.github/workflows/build-windows.yml
+    secrets: inherit
+  mac:
+    needs: android
+    uses: ./.github/workflows/build-mac.yml
+    secrets: inherit
+  linux:
+    needs: android
+    uses: ./.github/workflows/build-linux.yml
+    secrets: inherit
+  aur:
+    needs: linux
+    uses: ./.github/workflows/build-aur.yml
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [android, windows, mac, linux, aur]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: duodesk-*
+          path: release-files
+          merge-multiple: true
+      - name: Verify complete release and record checksums
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: node .github/actions/check-source/release-files.cjs release-files
+      - name: Publish complete release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        shell: bash
+        run: |
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            echo 'Release already exists; refusing an implicit overwrite.' >&2
+            exit 1
+          fi
+          shopt -s dotglob
+          gh release create "$RELEASE_TAG" release-files/* --verify-tag --title "DuoDesk ${RELEASE_TAG#v}" --generate-notes

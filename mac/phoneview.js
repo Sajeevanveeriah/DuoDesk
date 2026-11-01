@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // The phone in windows on the Mac: its screen (mirror, with its sound), and phone apps each in a
 // window of their own on a virtual display of the window's size (scrcpy new_display + flex, so
 // resizing the window resizes the app). One scrcpy session per window (scrcpy.js); the window
@@ -186,7 +187,7 @@ class PhoneViews extends EventEmitter {
   }
 
   cameraState() {
-    if (!this.cameraOn) return { on: false, facing: null, error: 'Camera is off on this computer: turn it on in TwinDesk’s Camera tab there', virtual: false };
+    if (!this.cameraOn) return { on: false, facing: null, error: 'Camera is off on this computer: turn it on in DuoDesk’s Camera tab there', virtual: false };
     const v = [...this.views.values()].find((x) => x.kind === 'camera' && !x.ending);
     return { on: !!v, facing: v ? v.facing : null, error: v ? v.error || '' : '', virtual: !!(this.vcam && this.vcam.ready) };
   }
@@ -567,7 +568,7 @@ class PhoneViews extends EventEmitter {
           if (ev === 'quit') return ws.forEach((v) => v.win.close());
           const w = ws[ev === 'focus' ? i : 0];
           if (w) {
-            app.focus({ steal: true }); // TwinDesk has no Dock icon of its own
+            app.focus({ steal: true }); // DuoDesk has no Dock icon of its own
             w.win.show();
             w.win.focus();
           }

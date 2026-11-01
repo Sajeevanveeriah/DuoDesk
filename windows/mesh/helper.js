@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith, Erdoğan Yeşil. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // ../helper.js with Multi-device's helper: macshare-winhelper-multi.exe, the same sources built with MULTI
 // (several watched sides, windows-helper/src/CaptureMulti.cs). Where it isn't built (an older bin/), the
 // one-to-one helper starts instead and watches the first side the mesh names (kvm.js sends it as side).
@@ -21,6 +22,7 @@ class MeshHelper extends Helper {
       this.emit('exit', -1);
       return;
     }
+    console.log('[startup] helper=' + EXE);
     const proc = spawn(EXE, [], { stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true });
     this.proc = proc;
     this.buf = '';

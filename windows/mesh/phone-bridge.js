@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith, Erdoğan Yeşil. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // Everything this PC does to the phone through wireless debugging (adb.js + scrcpy.js), while a
 // phone is the peer:
 //   setup   find the phone's adb (mDNS), pair once with the code from Developer options, connect,
@@ -170,7 +171,8 @@ class PhoneBridge extends EventEmitter {
   _tellPhone() {
     if (!isPhone(this.server.current)) return;
     const viewed = !!(this.views && this.views.list().length);
-    this.server.sendToClient({ t: T.ADB_BRIDGE, state: this.state, message: this.message, canPair: this.canPair, inputBlocked: this.inputBlocked, viewed });
+    const camera = this.views ? this.views.cameraState() : null;
+    this.server.sendToClient({ t: T.ADB_BRIDGE, state: this.state, message: this.message, canPair: this.canPair, inputBlocked: this.inputBlocked, viewed, camera });
   }
 
   // MIUI and HyperOS refuse adb's touches and keys (INJECT_EVENTS) until Developer options ›
@@ -476,7 +478,7 @@ class PhoneBridge extends EventEmitter {
     const apk = fullApk();
     const c = this.server.current;
     if (!this.serial || !isPhone(c)) return this._install('failed', 'Set up wireless debugging first.');
-    if (!apk) return this._install('failed', 'This build of TwinDesk doesn’t carry the Android app.');
+    if (!apk) return this._install('failed', 'This build of DuoDesk doesn’t carry the Android app.');
     const id = c.deviceId;
     const serial = this.serial;
     this._install('installing', `Installing on ${c.name}…`);
@@ -582,7 +584,7 @@ class PhoneBridge extends EventEmitter {
       setImmediate(() => this.server.inject({ t: T.KVM_REFUSE, route: m.route, why: P.REFUSE.NOT_ALLOWED }));
       if (d && (this.viaPhone || (this.state !== 'ready' && this.inputMode !== 'adb'))) { // no wireless debugging (Bluetooth), or chosen: the phone does it itself, once allowed
         this.server.sendToClient({ t: T.PHONE_INPUT_ASK });
-        this.emit('popup', 'home', 'On the phone, allow TwinDesk to control it (the notification there)');
+        this.emit('popup', 'home', 'On the phone, allow DuoDesk to control it (the notification there)');
       } else {
         this.emit('popup', 'home', this.state === 'ready' ? 'The phone isn’t ready yet' : 'Set up wireless debugging on the Phone page first');
       }
@@ -600,7 +602,7 @@ class PhoneBridge extends EventEmitter {
     const side = m.side || 'left';
     const x = side === 'left' ? 0 : side === 'right' ? d.w - 1 : off * (d.w - 1);
     const y = side === 'top' ? 0 : side === 'bottom' ? d.h - 1 : off * (d.h - 1);
-    this.kvm = { route: m.route, x, y, side, push: 0, buttons: 0, mouse: m.mouse !== false };
+    this.kvm = { route: m.route, x, y, side, push: 0, buttons: 0, heldButtons: new Set(), arrivedAt: performance.now(), inward: 0, mouse: m.mouse !== false };
     console.log(`[phone] driving starts: entered at ${side} (${Math.round(x)},${Math.round(y)}) of ${d.w}x${d.h}`);
     this.keys.clear();
     if (this.inputBlocked) this.emit('popup', 'home', INPUT_BLOCKED);
@@ -647,7 +649,14 @@ class PhoneBridge extends EventEmitter {
     if ((k.logged = (k.logged || 0) + 1) <= 8) console.log(`[phone] move ${k.logged}: dx=${m.dx} dy=${m.dy} scale=${scale.toFixed(2)} from (${Math.round(k.x)},${Math.round(k.y)}) side ${k.side} push ${Math.round(k.push)}`);
     // Back over the edge toward this PC (after a little push, the resistance).
     const back = { left: [dx, k.x <= 0, -1], right: [dx, k.x >= d.w - 1, 1], top: [dy, k.y <= 0, -1], bottom: [dy, k.y >= d.h - 1, 1] }[k.side];
-    if (back && back[1] && Math.sign(back[0]) === back[2]) {
+    const blocked = back ? require('../phone-edge').refusal(k, back[0] * back[2], performance.now(), P.KVM_CROSS_COOLDOWN_MS) : '';
+    if (back && back[1] && Math.sign(back[0]) === back[2] && blocked) {
+      k.push = 0;
+      if (performance.now() - (this.edgeNoteAt || -2000) >= 2000) {
+        this.edgeNoteAt = performance.now();
+        console.log('[kvm-phone] crossing refused ' + JSON.stringify({ reason: blocked, side: k.side, x: k.x, y: k.y, monitors: [[0, 0, d.w, d.h]] }));
+      }
+    } else if (back && back[1] && Math.sign(back[0]) === back[2]) {
       k.push += Math.abs(back[0]);
       if (k.push > Math.max(8, (cfg.resistancePx ?? P.RESISTANCE_PX) / 3) && !k.locked) {
         return this._goHome();
@@ -689,6 +698,8 @@ class PhoneBridge extends EventEmitter {
     if (!k || !d || !this.ctl) return;
     const down = m.t === T.K_DOWN;
     const b = Number(m.b) | 0;
+    if (!k.heldButtons) k.heldButtons = new Set();
+    if (down) k.heldButtons.add(b); else k.heldButtons.delete(b);
     // Like scrcpy: right = Back, middle = Home; left (and the side buttons) are the mouse's.
     if (b === 1) return this.ctl.backOrScreenOn(down ? ACTION.DOWN : ACTION.UP);
     if (b === 2) return void (down && this.ctl.tap(ANDROID.HOME));
@@ -731,8 +742,15 @@ class PhoneBridge extends EventEmitter {
   sessionOpts(kind, extra = {}) {
     const ph = this.getSettings().phone || {};
     const base = { video: true, control: true, maxFps: 60, videoBitRate: (ph.bitrateMbps || 8) * 1000000 };
+    if (kind === 'camera') return { ...base, audio: false, stayAwake: true, flex: false, ...extra };
     if (kind === 'screen') return { ...base, audio: !!ph.sound, maxSize: ph.maxSize || 0, stayAwake: true, ...extra };
     return { ...base, audio: false, flex: true, ...extra };
+  }
+
+  async listCameras() {
+    if (!this.serial || this.state !== 'ready') return [];
+    try { const { Session } = require('../scrcpy'); return await Session.listCameras(this.adb, this.serial); }
+    catch (error) { console.warn('[phone-bridge] camera list:', error.message); return []; }
   }
 
   setupView() {

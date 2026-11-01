@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // Extend: a virtual monitor for this computer that only the other one shows (windows/vdd.js's
 // interface for pcscreen.js):
 //   GNOME on Wayland — Mutter's own virtual monitors (org.gnome.Mutter.ScreenCast RecordVirtual,
@@ -52,11 +53,11 @@ const POLICY_XML = `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE policyconfig PUBLIC "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
  "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
 <policyconfig>
-  <vendor>TwinDesk</vendor>
-  <vendor_url>https://github.com/InukaAsith/TwinDesk</vendor_url>
+  <vendor>DuoDesk</vendor>
+  <vendor_url>https://github.com/Sajeevanveeriah/DuoDesk</vendor_url>
   <action id="org.twindesk.linux.connector">
-    <description>Switch a spare display output on for TwinDesk's Extend</description>
-    <message>TwinDesk wants to switch a spare display output on or off</message>
+    <description>Switch a spare display output on for DuoDesk's Extend</description>
+    <message>DuoDesk wants to switch a spare display output on or off</message>
     <defaults>
       <allow_any>auth_admin</allow_any>
       <allow_inactive>auth_admin</allow_inactive>
@@ -424,7 +425,7 @@ class Vdd {
         const { app } = require('electron');
         this._set({ checked: true, kind: 'xrandr', hint: '', installed: spare && ready, setup: spare && !ready,
           removable: ready && !(app.isPackaged && !process.env.APPIMAGE), // the .deb's own files stay
-          message: spare ? '' : NVIDIA() ? 'NVIDIA’s driver doesn’t let TwinDesk add a monitor on X11. Extend works on GNOME with Wayland, or with the open-source driver'
+          message: spare ? '' : NVIDIA() ? 'NVIDIA’s driver doesn’t let DuoDesk add a monitor on X11. Extend works on GNOME with Wayland, or with the open-source driver'
             : 'Your graphics driver has no spare output for a virtual monitor' });
       }
     } catch (e) {
@@ -444,9 +445,9 @@ class Vdd {
     try {
       const { dialog } = require('electron');
       const r = await dialog.showMessageBox({
-        type: 'question', title: 'TwinDesk', buttons: ['Switch it off', 'Leave it on'], defaultId: 0, cancelId: 1,
-        message: 'Switch off TwinDesk’s extra screen?',
-        detail: 'TwinDesk’s extra screen for Extend is on (' + names.join(', ') + '), so windows can end up on a screen nobody sees until Extend is on. '
+        type: 'question', title: 'DuoDesk', buttons: ['Switch it off', 'Leave it on'], defaultId: 0, cancelId: 1,
+        message: 'Switch off DuoDesk’s extra screen?',
+        detail: 'DuoDesk’s extra screen for Extend is on (' + names.join(', ') + '), so windows can end up on a screen nobody sees until Extend is on. '
           + 'Switching it off makes your monitors go black for a moment.',
       });
       if (r.response !== 0) { for (const n of names) this.declined.add(n); return; }
@@ -478,7 +479,7 @@ class Vdd {
         : conf ? 'Log out and back in once to finish installing.'
           : 'NVIDIA’s driver needs the extra screen in its settings. Install asks for your password once, then log out and back in. If you later plug a monitor into another port, install again.',
       message: ours ? (conf ? '' : 'Removed: log out and back in to finish') : conf ? 'Log out and back in once to finish adding the extra screen for Extend'
-        : ports && ports.pick ? '' : 'NVIDIA’s driver doesn’t let TwinDesk add a monitor on X11, and this card has no free DisplayPort port for one',
+        : ports && ports.pick ? '' : 'NVIDIA’s driver doesn’t let DuoDesk add a monitor on X11, and this card has no free DisplayPort port for one',
     });
   }
 
@@ -678,7 +679,7 @@ class Vdd {
       if (this.state.kind === 'nvidia') {
         const ports = nvPorts();
         if (!ports.pick) throw new Error('no free DisplayPort port');
-        const conf = `# TwinDesk: an extra screen for Extend on NVIDIA's driver (Share screen › Extend; Remove takes it away).
+        const conf = `# DuoDesk: an extra screen for Extend on NVIDIA's driver (Share screen › Extend; Remove takes it away).
 # ConnectedMonitor replaces the driver's detection: the ports in use when it was installed, and ours.
 Section "OutputClass"
     Identifier "TwinDesk virtual screen"

@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // Files tab: drag and drop and network drives, both directions in equal places.
 'use strict';
 
@@ -27,7 +28,7 @@ UI.tab({
     const pcRow = UI.row('Open {name}’s shared folder', '', [openBtn, pcSw]);
     // shared
     const dragSw = UI.switch((v) => api.setFiles({ dragEdge: v }), { label: 'Drag files across the screen edge' });
-    const dragRow = UI.row('Drag files between computers', 'Drag through the screen edge and drop anywhere', [dragSw]);
+    const dragRow = UI.row('Release files at the screen edge', 'Drag to the outer edge, then release to copy to the other device. The pointer stays here.', [dragSw]);
     const reveal = UI.switch((v) => api.setFiles({ reveal: v }), { label: 'Show in Finder' });
     const folderRow = UI.row('Save to', '', [UI.button('Choose…', () => api.pickDropFolder(), 'small'), UI.button('Downloads', () => api.resetDropFolder(), 'small')]);
     const progress = el('div');
@@ -104,7 +105,7 @@ UI.tab({
         : ck.incoming ? `${pc} copied ${ck.incoming.name || `${ck.incoming.items} items`} · press ${UI.keysLabel(f.pasteKeys)}`
           : 'Into the app in front (a chat, a mail…), or the Finder folder in front, else the Desktop');
       dragSw.set(f.dragEdge !== false);
-      dragRow.setHint(f.dragEdge !== false && !f.peerDrag ? `Turned off on ${pc}` : 'Drag through the screen edge and drop anywhere');
+      dragRow.setHint(f.dragEdge !== false && !f.peerDrag ? `Turned off on ${pc}` : 'Drag to the outer edge, then release to copy to the other device. The pointer stays here.');
       shareSw.set(m.sharing);
       shareSw.disable(m.shareBusy);
       chooseBtn.disabled = m.shareBusy;

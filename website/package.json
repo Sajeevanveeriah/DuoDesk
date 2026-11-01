@@ -1,0 +1,9 @@
+{
+  "name": "duodesk-website",
+  "version": "2.5.0",
+  "private": true,
+  "type": "module",
+  "license": "GPL-3.0",
+  "scripts": { "test": "node --test test/*.test.mjs", "build": "node scripts/check.mjs" },
+  "dependencies": { "@neondatabase/serverless": "^1.0.2" }
+}

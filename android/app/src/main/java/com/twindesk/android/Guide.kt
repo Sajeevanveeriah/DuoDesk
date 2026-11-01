@@ -98,7 +98,7 @@ private fun WirelessSteps(core: Core, ctx: Context, title: String, foot: @Compos
     val connected = core.host != null
     class S(val title: String, val hint: String, val done: Boolean, val optional: Boolean = false, val action: @Composable () -> Unit = {})
     val steps = listOfNotNull(
-        S("Connect to $name", "Open TwinDesk on $name, then tap Connect on Overview.", connected) {
+        S("Connect to $name", "Open DuoDesk on $name, then tap Connect on Overview.", connected) {
             core.hosts().firstOrNull()?.let { h -> Secondary("Connect") { core.connect(h) } }
         },
         S(
@@ -114,7 +114,7 @@ private fun WirelessSteps(core: Core, ctx: Context, title: String, foot: @Compos
         S("Turn on USB and Wireless debugging", "Developer options › USB debugging and Wireless debugging: both on.", a.wifiDebugging) { Secondary("Open") { a.turnOn() } },
         S(
             "Pair with $name",
-            if (a.pairing) "Pairing…" else "“Pair device with pairing code”, then type the code in TwinDesk’s notification.", a.paired,
+            if (a.pairing) "Pairing…" else "“Pair device with pairing code”, then type the code in DuoDesk’s notification.", a.paired,
         ) { Primary("Pair") { a.askForCode(); a.openSettings() } },
     )
     val current = steps.indexOfFirst { !it.done && !it.optional }

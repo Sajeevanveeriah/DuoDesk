@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // XTest injection of k.* events. Moves are absolute
 // (current position + delta, clamped to the desktop), so X's pointer acceleration isn't applied a
 // second time. XTest events come from the XTest slave device, which capture.c skips (rule 4).
@@ -43,6 +44,10 @@ static void button(int b, int down) {
 }
 
 void inject_button(int b, int down) { button(b, down); }
+int inject_buttons_held(void) {
+  for (int b = 0; b < 5; b++) if (heldButtons[b]) return 1;
+  return 0;
+}
 
 void inject_button_up(int b) {
   if (b >= 0 && b <= 4 && heldButtons[b]) button(b, 0);

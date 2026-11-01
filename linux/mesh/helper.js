@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith, Erdoğan Yeşil. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // ../helper.js with Multi-device's helper: macshare-linuxhelper-multi, the same sources built with
 // -DMULTI (several watched edges on X11: the #ifdef MULTI parts of linux-helper/src/capture.c and
 // main.c). Where it isn't built (an older bin/), the one-to-one helper starts instead and watches the
@@ -17,6 +18,7 @@ class MeshHelper extends Helper {
   // ../helper.js's start() with this BIN.
   start() {
     this.stopped = false;
+    if (BIN !== MULTI) console.warn('[startup] degraded: multi-device helper missing; using single-edge helper ' + BIN);
     if (this.proc) return;
     const why = this.canRun();
     if (why) {
@@ -29,6 +31,7 @@ class MeshHelper extends Helper {
       this.emit('exit', -1);
       return;
     }
+    console.log('[startup] helper=' + BIN + ' session=' + (process.env.XDG_SESSION_TYPE || 'unknown'));
     const proc = spawn(BIN, [], { stdio: ['pipe', 'pipe', 'pipe'] });
     this.proc = proc;
     this.buf = '';

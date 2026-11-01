@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // Spawns mac-helper and talks JSON lines with it.
 //   request(cmd, args) -> Promise<reply>   (has an id, waits for {"id","ok"})
 //   send(cmd, args)                        (fire-and-forget, no id)
@@ -35,6 +36,7 @@ class Helper extends EventEmitter {
       return false;
     }
     const proc = spawn(BIN, [], { stdio: ['pipe', 'pipe', 'pipe', 'pipe'] });
+    proc.once('spawn', () => console.log(`[startup] helper=${BIN} pid=${proc.pid}`));
     proc.stdio[3].on('data', (buf) => this.emit('pcm', buf));
     proc.stdio[3].on('error', () => {});
     this.proc = proc;

@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // The virtual camera on Linux (shared/vcam.js's driver): "TwinDesk Camera", a v4l2loopback device
 // every app can pick. Installed once (one password prompt, pkexec): the v4l2loopback module from
 // the distribution's packages when it isn't there (DKMS: it needs the kernel's headers, and with
@@ -67,7 +68,7 @@ const driver = {
   always: true,
 
   async check() {
-    if (!fs.existsSync(WRITER)) return { supported: false, message: 'Not in this build of TwinDesk' };
+    if (!fs.existsSync(WRITER)) return { supported: false, message: 'Not in this build of DuoDesk' };
     return { supported: true, installed: !!device() };
   },
 

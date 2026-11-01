@@ -1,3 +1,4 @@
+// DuoDesk modifications: 2026-11-01; original notices retained.
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
 // Remote tab (Mac, PC and Linux; with a phone): the phone's Remote page — a touchpad and keyboard,
 // or a gamepad whose buttons press keys — moves this computer's pointer, clicks, scrolls and types
@@ -25,7 +26,7 @@ UI.tab({
   },
   build(body) {
     const status = UI.row('Now', '');
-    const how = UI.row('On {name}', 'Open TwinDesk › Remote there, then Touchpad and keyboard or Gamepad. Its speed, tap to click and the gamepad’s keys are set there');
+    const how = UI.row('On {name}', 'Open DuoDesk › Remote there, then Touchpad and keyboard or Gamepad. Its speed, tap to click and the gamepad’s keys are set there');
     const card = UI.card('{name} as a remote', [status, how]);
     const note = UI.note('warn', '');
     const padSwitch = UI.switch((v) => UI.api.setRemote({ pad: v }), { label: 'Real gamepad' });

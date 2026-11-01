@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // Bluetooth LE for when the other device isn't on this Mac's network: this Mac (the host) is a
 // GATT peripheral that advertises the TwinDesk service. A guest (the phone, a PC) connects, reads
 // INFO (this Mac's beacon), says who it is on CTRL, and opens a byte pipe: it writes UP, we notify
@@ -104,7 +105,7 @@ final class BlePeripheral: NSObject, CBPeripheralManagerDelegate {
 
   func peripheralManager(_ p: CBPeripheralManager, didAdd service: CBService, error: Error?) {
     if let error = error { return log("ble: add service: \(error.localizedDescription)") }
-    p.startAdvertising([CBAdvertisementDataServiceUUIDsKey: [Self.serviceId], CBAdvertisementDataLocalNameKey: "TwinDesk"])
+    p.startAdvertising([CBAdvertisementDataServiceUUIDsKey: [Self.serviceId], CBAdvertisementDataLocalNameKey: "DuoDesk"])
   }
 
   func peripheralManagerDidStartAdvertising(_ p: CBPeripheralManager, error: Error?) {

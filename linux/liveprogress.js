@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // Files on their way, in a notification with a live progress bar: org.freedesktop.Notifications
 // through gdbus (glib's, on every desktop), each update replacing the last (replaces_id) with the
 // `value` hint, which KDE and others draw as a bar; GNOME shows the percentage in the text.
@@ -40,7 +41,7 @@ class LiveProgress {
 
   _notify(tag, title, body, hints, timeout, replace = this.ids[tag] || 0, last = false) {
     this.busy[tag] = true;
-    this._call(['--method', 'org.freedesktop.Notifications.Notify', q('TwinDesk'), String(replace), q(this.icon), q(title), q(body), '[]', hints, String(timeout)], (out) => {
+    this._call(['--method', 'org.freedesktop.Notifications.Notify', q('DuoDesk'), String(replace), q(this.icon), q(title), q(body), '[]', hints, String(timeout)], (out) => {
       this.busy[tag] = false;
       const m = /uint32 (\d+)/.exec(out || '');
       if (m && !last) this.ids[tag] = Number(m[1]);

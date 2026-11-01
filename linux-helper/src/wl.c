@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // Wayland backend: on Wayland no client may read or inject global input,
 // so the helper goes under the compositor instead: it reads the keyboards, mice and touchpads
 // from /dev/input (the `input` group, set up once from Setup), grabs them (EVIOCGRAB) while this
@@ -12,6 +13,7 @@
 // with `screens`). Pinned against an edge both agree again, which is where the edge push is
 // measured. Ahead of the real pointer, a quick flick crossed before it reached the edge.
 #include "helper.h"
+#include "edge-policy.h"
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -73,6 +75,21 @@ static int arrivalSide = SIDE_NONE;
 static double arrivalAt, arrivalInward;
 static double edgeZ[8][2], retZ[8][2]; // zones, as in capture.c
 static int nEdgeZ = -1, nRetZ = -1;
+static double edgeBySide[4][8][2], retBySide[4][8][2];
+static int edgeCounts[4] = {-1,-1,-1,-1}, retCounts[4] = {-1,-1,-1,-1};
+static int sides[4], nsides, retSides[4], nret;
+static double pushBy[4], lastPushBy[4], pushSinceBy[4], retPushBy[4], retLastBy[4], retSinceBy[4];
+static int parse_sides(const char *list, int fallback, int *out) {
+  if (!list) { if (fallback != SIDE_NONE) { out[0] = fallback; return 1; } return 0; }
+  int n = 0; char buf[64], *save = NULL;
+  snprintf(buf, sizeof buf, "%s", list);
+  for (char *t = strtok_r(buf, ",", &save); t && n < 4; t = strtok_r(NULL, ",", &save)) {
+    int v = side_of(t), seen = 0;
+    for (int i = 0; i < n; i++) if (out[i] == v) seen = 1;
+    if (v != SIDE_NONE && !seen) out[n++] = v;
+  }
+  return n;
+}
 static int hkDown;
 static double lastTapUp = -1;
 static int hkPending = -1;
@@ -238,23 +255,37 @@ void wl_arrived(int s) {
   lastCross = now_ms();
   arrivalSide = s; arrivalAt = lastCross; arrivalInward = 0;
   push = retPush = 0;
+  memset(pushBy, 0, sizeof pushBy); memset(retPushBy, 0, sizeof retPushBy);
 }
 
 // 0 while a crossing through `s` has to wait (cooldown, arrival guard).
-static int may_cross(int s, double outward) {
+static int may_cross(int s, double outward, double zones[][2], int nZones) {
   double now = now_ms();
-  if (now - lastCross < cooldownMs) return 0;
-  if (arrivalSide != SIDE_NONE && arrivalSide == s) {
-    if (outward < 0) arrivalInward -= outward;
-    if (now - arrivalAt < GUARD_MS && arrivalInward < 8) return 0;
-    arrivalSide = SIDE_NONE;
+  if (s < 0 || s > 3) return 0;
+  int returning = zones == retZ;
+  zones = returning ? retBySide[s] : edgeBySide[s];
+  nZones = returning ? retCounts[s] : edgeCounts[s];
+  if (arrivalSide == s && outward < 0) arrivalInward -= outward;
+  if (outward <= 0 || !screens_at_edge((int)px, (int)py, s)) return 0;
+  int buttons = 0;
+  for (int b = 0; b < 8; b++) if (injButtons[b]) buttons = 1;
+  // Kernel snapshots cover buttons held before startup and multiple physical mice.
+  for (int i = 0; i < nin; i++) {
+    if (!(ins[i].kind & (K_MOUSE | K_PAD))) continue;
+    unsigned long keys[(KEY_CNT + 63) / 64] = {0};
+    if (ioctl(ins[i].fd, EVIOCGKEY(sizeof keys), keys) < 0) { buttons = 1; continue; }
+    for (int b = BTN_LEFT; b <= BTN_TASK; b++) if (test_bit(keys, b)) buttons = 1;
   }
+  int arriving = arrivalSide == s && now - arrivalAt < GUARD_MS && arrivalInward < 8;
+  const char *why = edge_refusal(screens_on_outer_edge((int)px, (int)py, s), zones_contain(zones, nZones, (int)px, (int)py, s), buttons, now - lastCross, cooldownMs, arriving);
+  if (why) { screens_reject(why, (int)px, (int)py, s); return 0; }
+  if (arrivalSide == s) arrivalSide = SIDE_NONE;
   return 1;
 }
 
 static void inj_move(double dx, double dy) {
   int ix = (int)lround(px + dx), iy = (int)lround(py + dy), cx, cy;
-  screens_walk(ix, iy, (int)px, (int)py, &retSide, retArmed ? 1 : 0, &cx, &cy);
+  screens_walk(ix, iy, (int)px, (int)py, retSides, retArmed ? nret : 0, &cx, &cy);
   px = (cx == ix) ? px + dx : cx;
   py = (cy == iy) ? py + dy : cy;
   abs_to(px, py);
@@ -364,41 +395,58 @@ void wl_capture_stop(int toSide, double offset, int hasSide) {
   wl_arrived(capMouse && hasSide ? toSide : SIDE_NONE);
 }
 
-void wl_return_zones(const char *text) { nRetZ = zones_parse(text, retZ, 8); }
-
-void wl_arm_return(int on, int s, double resistance) {
-  retArmed = on && s != SIDE_NONE;
-  retSide = s;
-  retResistance = resistance;
-  retPush = 0;
+void wl_return_zones(const char *text) {
+  nRetZ = zones_parse(text, retZ, 8);
+  for (int i = 0; i < 4; i++) retCounts[i] = zones_parse(text, retBySide[i], 8);
 }
+void wl_return_zone_map(const JObj *map) {
+  if (!map) return;
+  for (int i = 0; i < 4; i++) if (jhas(map, side_name(i))) retCounts[i] = zones_parse(jstr(map, side_name(i), NULL), retBySide[i], 8);
+}
+
+void wl_arm_return_list(int on, const char *list, int fallback, double resistance) {
+  nret = on ? parse_sides(list, fallback, retSides) : 0;
+  retArmed = nret > 0;
+  retSide = nret ? retSides[0] : SIDE_NONE;
+  retResistance = resistance;
+  memset(retPushBy, 0, sizeof retPushBy);
+}
+void wl_arm_return(int on, int s, double resistance) { wl_arm_return_list(on, NULL, s, resistance); }
 
 static void feed_return(double dx, double dy) {
   if (!retArmed) return;
-  double outward = screens_outward(retSide, dx, dy);
-  if (!may_cross(retSide, outward)) { retPush = 0; return; }
-  if (outward <= 0 || !screens_on_outer_edge((int)px, (int)py, retSide) || !zones_contain(retZ, nRetZ, (int)px, (int)py, retSide)) { retPush = 0; return; }
   double now = now_ms();
-  if (now - retLast > 300) retPush = 0;
-  retLast = now;
-  if (retPush == 0) retSince = now;
-  retPush += outward;
-  if (retPush < retResistance || !dwelt(retResistance, retSince, now)) return;
-  retArmed = 0;
-  lastCross = now;
-  JOut o;
-  jo_begin(&o);
-  jo_str(&o, "event", "return");
-  jo_num(&o, "offset", round(screens_offset((int)px, (int)py, retSide) * 10000) / 10000);
-  emit(jo_end(&o));
+  for (int i = 0; i < nret; i++) {
+    int s = retSides[i];
+    double outward = screens_outward(s, dx, dy);
+    if (!may_cross(s, outward, retZ, nRetZ)) { retPushBy[s] = 0; continue; }
+    if (now - retLastBy[s] > 300) retPushBy[s] = 0;
+    retLastBy[s] = now;
+    if (retPushBy[s] == 0) retSinceBy[s] = now;
+    retPushBy[s] += outward;
+    if (retPushBy[s] < retResistance || !dwelt(retResistance, retSinceBy[s], now)) continue;
+    retArmed = 0;
+    memset(retPushBy, 0, sizeof retPushBy);
+    lastCross = now;
+    JOut o; jo_begin(&o);
+    jo_str(&o, "event", "return");
+    jo_str(&o, "side", side_name(s));
+    jo_num(&o, "offset", round(screens_offset((int)px, (int)py, s) * 10000) / 10000);
+    emit(jo_end(&o));
+    return;
+  }
 }
 
 void wl_config(const JObj *c) {
   side = side_of(jstr(c, "side", NULL));
+  nsides = parse_sides(jstr(c, "sideList", NULL), side, sides);
+  memset(pushBy, 0, sizeof pushBy);
   resistancePx = jnum(c, "resistancePx", 120);
   cooldownMs = jnum(c, "cooldownMs", 250);
   dwellMs = jnum(c, "dwellMs", 150);
   nEdgeZ = zones_parse(jstr(c, "zones", NULL), edgeZ, 8);
+  JObj *zoneMap = jobj(c, "zonesBySide");
+  for (int i = 0; i < 4; i++) edgeCounts[i] = zones_parse(jstr(zoneMap, side_name(i), jstr(c, "zones", NULL)), edgeBySide[i], 8);
   const char *hk = jstr(c, "hotkey", "AltRight");
   char l[24], r[24];
   snprintf(l, sizeof l, "%sLeft", hk);
@@ -570,22 +618,26 @@ static void on_motion(double rdx, double rdy, double tMs) {
   screens_clamp(ix, iy, (int)px, (int)py, &cx, &cy);
   px = cx; py = cy;
   if (retArmed) { feed_return(rdx, rdy); return; }
-  if (!driveOther || side == SIDE_NONE || any(localButtons, 8)) { push = 0; return; } // rule 6
-  double outward = screens_outward(side, rdx, rdy);
-  if (!may_cross(side, outward)) { push = 0; return; }
-  if (outward <= 0 || !screens_on_outer_edge((int)px, (int)py, side) || !zones_contain(edgeZ, nEdgeZ, (int)px, (int)py, side)) { push = 0; return; }
-  if (now - lastPush > 300) push = 0;
-  lastPush = now;
-  if (push == 0) pushSince = now;
-  push += outward;
-  if (push < resistancePx || !dwelt(resistancePx, pushSince, now)) return;
-  double offset = screens_offset((int)px, (int)py, side);
-  really_begin(1, edgeKeyboard);
-  JOut o;
-  jo_begin(&o);
-  jo_str(&o, "event", "edge");
-  jo_num(&o, "offset", round(offset * 10000) / 10000);
-  emit(jo_end(&o));
+  if (!driveOther || !nsides) { memset(pushBy, 0, sizeof pushBy); return; }
+  for (int i = 0; i < nsides; i++) {
+    int s = sides[i];
+    double outward = screens_outward(s, rdx, rdy);
+    if (!may_cross(s, outward, edgeZ, nEdgeZ)) { pushBy[s] = 0; continue; }
+    if (now - lastPushBy[s] > 300) pushBy[s] = 0;
+    lastPushBy[s] = now;
+    if (pushBy[s] == 0) pushSinceBy[s] = now;
+    pushBy[s] += outward;
+    if (pushBy[s] < resistancePx || !dwelt(resistancePx, pushSinceBy[s], now)) continue;
+    double offset = screens_offset((int)px, (int)py, s);
+    really_begin(1, edgeKeyboard);
+    memset(pushBy, 0, sizeof pushBy);
+    JOut o; jo_begin(&o);
+    jo_str(&o, "event", "edge");
+    jo_str(&o, "side", side_name(s));
+    jo_num(&o, "offset", round(offset * 10000) / 10000);
+    emit(jo_end(&o));
+    return;
+  }
 }
 
 static void read_in(int i) {

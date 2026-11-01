@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // Screen sharing: stream state, the Monitor 2 window, and relaying stream.*/rtc.* between the
 // link (main process) and the Monitor 2 renderer, which owns the RTCPeerConnection.
 // We tell the other computer whether anyone watches (`screen.policy {accept}`: Monitor 2
@@ -236,7 +237,7 @@ class Screen {
 
   _title() {
     if (!this.win || this.win.isDestroyed()) return;
-    const macName = this.link.snapshot().link.macName || 'TwinDesk';
+    const macName = this.link.snapshot().link.macName || 'DuoDesk';
     const s = this.state;
     this.win.setTitle(s.state === 'on'
       ? macName + ' (' + s.width + ' × ' + s.height + ')'

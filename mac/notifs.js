@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // Notifications both ways: this Mac's notifications go to the peer
 // while it accepts them (`notif.policy`); the peer's show here as native notifications from
 // TwinDesk. Reading needs Full Disk Access (the helper reads the Notification Center database).
@@ -18,7 +19,7 @@ class Notifs extends EventEmitter {
   constructor({ server, helper, getSettings, saveSettings }) {
     super();
     this.iconsOut = new IconsOut();
-    this.iconsIn = new IconsIn(nativeImage); // none: macOS shows TwinDesk's icon with every notification
+    this.iconsIn = new IconsIn(nativeImage); // none: macOS shows DuoDesk's icon with every notification
     Object.assign(this, { server, helper, getSettings, saveSettings });
     this.peerAccepts = false;
     this.access = 'unknown'; // 'ok' | 'noAccess' (Full Disk Access) | 'unknown'

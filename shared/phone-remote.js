@@ -1,3 +1,4 @@
+// DuoDesk modifications: 2026-11-01; original notices retained.
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
 // The phone as this computer's remote (Windows, Mac and Linux): its Remote page (a touchpad, a
 // keyboard, a gamepad whose buttons are keys) moves this computer's pointer, clicks, scrolls and
@@ -97,7 +98,7 @@ class PhoneRemote {
 
   // Why it isn't taken now, '' when it is.
   get why() {
-    if (!this.allow) return 'Remote is off on this computer: turn it on in TwinDesk’s Remote page there';
+    if (!this.allow) return 'Remote is off on this computer: turn it on in DuoDesk’s Remote page there';
     if (!this.atHome()) return 'This computer’s mouse is on another device now (Cursor): bring it back first';
     return '';
   }

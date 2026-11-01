@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // The virtual camera on Windows 11 (shared/vcam.js's driver): "TwinDesk Camera", a camera every
 // app can pick (Windows' MFCreateVirtualCamera). Its media source, windows-helper/bin/
 // twindesk-vcam-<arch>.dll, is registered once for the whole PC (one UAC prompt,
@@ -54,7 +55,7 @@ const driver = {
 
   async check() {
     if (Number((os.release().split('.')[2]) || 0) < 22000) return { supported: false, message: 'Needs Windows 11: Windows 10 has no virtual cameras' };
-    if (!fs.existsSync(EXE) || !fs.existsSync(DLL)) return { supported: false, message: 'Not in this build of TwinDesk' };
+    if (!fs.existsSync(EXE) || !fs.existsSync(DLL)) return { supported: false, message: 'Not in this build of DuoDesk' };
     const [reg, st] = await Promise.all([registered(), exe('status')]);
     return { supported: true, installed: reg && st.camera === true };
   },

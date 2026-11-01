@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith, Erdoğan Yeşil. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // Main process with Multi-device on (docs/multi-device.md): ../main.js starts this file instead of its
 // own code when multi.json says so. Lifecycle, windows, tray, IPC, and the state pushed to the control
 // window, as ../main.js, over the mesh (hub.js) instead of one peer. When a fix in ../main.js applies
@@ -223,6 +224,8 @@ function publishState() {
     state.kvm = settings.kvm;
     state.keys = settings.keys;
     state.clipboard = clip ? { ...settings.clipboard, ...clip.view } : null;
+    state.camera = svc && svc.camShare ? svc.camShare.state : { on: false, watchers: [] };
+    state.vcam = svc && svc.vcam ? svc.vcam.view() : { checked: true, supported: true, on: false };
     state.ui = settings.ui;
     state.mesh = settings.mesh;
     state.app = settings.app;
@@ -293,7 +296,7 @@ function handleSendLink(url) {
   try { u = new URL(url); } catch { return; }
   const paths = u.searchParams.getAll('p').filter((x) => x.startsWith('/')).slice(0, 1000);
   if (!paths.length) return;
-  if (!peer.current) return hud && hud.show('away', 'Not connected', 'Open TwinDesk on the other computer first');
+  if (!peer.current) return hud && hud.show('away', 'Not connected', 'Open DuoDesk on the other computer first');
   actions.sendFiles(paths);
   hud && hud.show('away', `Sending ${paths.length} item${paths.length === 1 ? '' : 's'} to ${peer.current.name}`);
 }
@@ -366,7 +369,7 @@ function createWindow() {
     height: 720,
     minWidth: 760,
     minHeight: 520,
-    title: 'TwinDesk',
+    title: 'DuoDesk',
     show: false,
     titleBarStyle: 'hiddenInset', // the sidebar runs up under the traffic lights
     vibrancy: 'sidebar',
@@ -433,7 +436,7 @@ function updateTray() {
   const name = c ? c.name : 'the other computer';
   const k = settings.kvm;
   const where = state.input && state.input.where;
-  tray.setToolTip(c ? `TwinDesk: ${c.name}` : 'TwinDesk');
+  tray.setToolTip(c ? `DuoDesk: ${c.name}` : 'DuoDesk');
   const found = (state.found || []).filter((d) => !c || d.id !== c.id);
   const other = c ? name : 'Other Computer';
   tray.setContextMenu(Menu.buildFromTemplate(trayMenu.template({
@@ -457,7 +460,7 @@ function updateTray() {
     found: found.map((d) => ({ label: `${d.name} (${d.os === 'mac' ? 'Mac' : d.os === 'linux' ? 'Linux' : 'PC'})`, click: () => actions.pairWith(d.id) })),
     byAddress: () => { actions.setTab('connection'); showWindow(); },
     lookAgain: () => actions.refreshDiscovery(),
-    update: updates && updates.status.available ? { label: `TwinDesk ${updates.status.latest} available…`, click: showUpdateWindow } : null,
+    update: updates && updates.status.available ? { label: `DuoDesk ${updates.status.latest} available…`, click: showUpdateWindow } : null,
     open: showWindow,
     log: () => require('../../shared/applog.js').open(),
     quit: () => app.quit(),
@@ -595,6 +598,15 @@ app.whenReady().then(() => {
       return { phone: ph, bridge, views };
     },
     onUnit: (u) => {
+      if (svc.vcam) u.views.vcam = svc.vcam;
+      const openCamera = u.views.openCamera.bind(u.views);
+      u.views.openCamera = (options) => {
+        if (svc.camShare) { svc.camShare.setShare(false); svc.camShare.closeView(); }
+        for (const other of svc.phone ? svc.phone.all : []) {
+          if (other !== u) for (const view of other.views.list()) if (view.kind === 'camera') other.views.close(view.id);
+        }
+        return openCamera(options);
+      };
       u.phone.on('change', pushState);
       // The phone's Keyboard page names this Mac's hotkey (double-tap = everything back here).
       u.link.on('client', () => u.link.sendToClient({ t: 'phone.mac', hotkey: P.hotkeyName(settings.keys.hotkey || P.HOTKEY_MAC) }));
@@ -606,6 +618,41 @@ app.whenReady().then(() => {
   });
   svc.phone.on('change', pushState);
   svc.phoneViews = svc.phone.viewsProxy; // the windows of the active phone
+  svc.loadCamera = () => {
+    if (svc.camShare || settings.camera.on === false) return svc.camShare || null;
+    const { MeshCamera } = require('../../shared/mesh-camera.js');
+    const { VirtualCam } = require('../../shared/vcam.js');
+    svc.vcam = new VirtualCam({ driver: require('../vcam'), cfg: () => settings.camera,
+      save: () => store.saveSettings(settings), onChange: pushState,
+      onReady: () => { for (const u of svc.phone.all) u.bridge._tellPhone(); }, ui: () => win });
+    for (const u of svc.phone.all) u.views.vcam = svc.vcam;
+    svc.camShare = new MeshCamera({ hub, cfg: () => settings.camera,
+      save: () => store.saveSettings(settings), onChange: pushState,
+      beforeStart: () => {
+        for (const u of svc.phone.all) for (const view of u.views.list()) if (view.kind === 'camera') u.views.close(view.id);
+      },
+      popup: (kind, text) => hud && hud.show(kind, text),
+      askPermission: async () => {
+        const permission = systemPreferences.getMediaAccessStatus('camera');
+        return permission === 'granted' || (permission === 'not-determined' && systemPreferences.askForMediaAccess('camera'));
+      } });
+    svc.vcam.check();
+    svc.camShare.sendPolicy();
+    return svc.camShare;
+  };
+  svc.cam = () => ({ camShare: svc.camShare || null, vcam: svc.vcam || null });
+  svc.setCamera = (on) => {
+    settings.camera.on = !!on;
+    store.saveSettings(settings);
+    if (on) { svc.loadCamera(); if (svc.camShare) svc.camShare.sendPolicy(); }
+    else {
+      if (svc.camShare) { svc.camShare.closeView(); svc.camShare.setShare(false); }
+      for (const u of svc.phone.all) for (const v of u.views.list()) if (v.kind === 'camera') u.views.close(v.id);
+    }
+    for (const u of svc.phone.all) u.bridge._tellPhone();
+    pushState();
+  };
+  svc.loadCamera();
   // A phone notification clicked here: its app in a window (on the phone it came from).
   svc.notifs.on('click', (m) => {
     const u = svc.phone.unit(m.originId);

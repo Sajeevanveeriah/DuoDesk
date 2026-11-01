@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // Builds the Windows installer (npm run dist): the helper, a staging folder with the same layout
 // as the repo (windows/, shared/protocol.js, windows-helper/bin/), then electron-builder → NSIS.
 // For a phone as the peer it also carries adb (downloaded, scripts/fetch-adb.js) and the
@@ -63,7 +64,7 @@ async function main() {
   copy(WIN, path.join(STAGE, 'windows'), (name) => !SKIP.has(name));
   // Every shared module (a list missed new ones: the app then failed on its first require), and the
   // pages' styles and the call window (phonehub.css, callpop.html).
-  copy(path.join(ROOT, 'shared'), path.join(STAGE, 'shared'), (name) => /\.(js|css|html)$/.test(name));
+  copy(path.join(ROOT, 'shared'), path.join(STAGE, 'shared'), (name) => /\.(js|css|html|txt|woff2?|ttf|otf|svg|png|ico|icns)$/.test(name) || ['fonts', 'assets', 'icon'].includes(name));
   copy(path.join(ROOT, 'windows-helper', 'bin', 'macshare-winhelper.exe'),
     path.join(STAGE, 'windows-helper', 'bin', 'macshare-winhelper.exe'));
   // Multi-device's helper (several watched sides, docs/multi-device.md): the same sources built with MULTI.
@@ -110,14 +111,15 @@ async function main() {
 }
 
 async function pack(arch) {
-  const name = 'TwinDesk-Setup-' + pkg.version + (arch === 'x64' ? '' : '-' + arch) + '.exe';
+  const name = 'DuoDesk-Setup-' + pkg.version + (arch === 'x64' ? '' : '-' + arch) + '.exe';
   console.log('Packaging ' + arch + '…');
   await builder.build({
+    publish: 'never',
     targets: builder.Platform.WINDOWS.createTarget('nsis', builder.Arch[arch]),
     projectDir: WIN,
     config: {
       appId: 'org.macshare.windows',
-      productName: 'TwinDesk',
+      productName: 'DuoDesk',
       copyright: 'Copyright (C) 2026 inukaasith',
       electronVersion,
       directories: { app: STAGE, output: path.join(WIN, 'dist') },
@@ -125,7 +127,7 @@ async function pack(arch) {
       npmRebuild: false,
       win: {
         icon: path.join(__dirname, 'icon.ico'),
-        executableName: 'TwinDesk',
+        executableName: 'DuoDesk',
         // electron-builder signs with WIN_CSC_LINK when supplied. Don't silently release an
         // unsigned installer after the signing secret has been configured.
         forceCodeSigning: Boolean(process.env.WIN_CSC_LINK),
@@ -139,7 +141,7 @@ async function pack(arch) {
         uninstallerIcon: path.join(__dirname, 'icon.ico'),
         license: path.join(ROOT, 'LICENSE'),
         include: path.join(__dirname, 'installer.nsh'),
-        shortcutName: 'TwinDesk',
+        shortcutName: 'DuoDesk',
         createDesktopShortcut: true,
         createStartMenuShortcut: true,
         runAfterFinish: true,

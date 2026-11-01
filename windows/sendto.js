@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // Explorer's right-click › Send to
 // gets "<peer name> (TwinDesk)", a shortcut in shell:sendto to `TwinDesk.exe --send-files`. Explorer
 // appends the chosen paths; that copy of TwinDesk hands them to this one (second-instance) and they
@@ -42,7 +43,7 @@ class SendTo {
       const args = (app.isPackaged ? [] : [app.getAppPath()]).map((x) => (/\s/.test(x) ? '"' + x + '"' : x)).concat(ARG).join(' ');
       const file = path.join(this.dir, name + SUFFIX);
       const ok = shell.writeShortcutLink(file, fs.existsSync(file) ? 'replace' : 'create', {
-        target: process.execPath, args, description: 'Send to ' + name + ' with TwinDesk', icon: process.execPath, iconIndex: 0,
+        target: process.execPath, args, description: 'Send to ' + name + ' with DuoDesk', icon: process.execPath, iconIndex: 0,
       });
       if (!ok) console.warn('[sendto] Windows refused the Send to shortcut');
     } catch (e) {

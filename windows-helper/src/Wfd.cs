@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // A Wi-Fi network for the other device to join (files and screens for a session through Bluetooth,
 // shared/netlink.js): Wi-Fi Direct's "legacy" access point, which any device joins like any Wi-Fi
 // (a Mac, a phone, another PC) while this PC stays on its own Wi-Fi. Also for joining one (wifi.js):
@@ -60,7 +61,7 @@ namespace MacShare
             if ((r.State == RadioState.On) == on) return was;
             if (r.State == RadioState.Disabled) throw new Exception("Wi-Fi is switched off on this PC (its switch or key)");
             if (await Radio.RequestAccessAsync() != RadioAccessStatus.Allowed || await r.SetStateAsync(on ? RadioState.On : RadioState.Off) != RadioAccessStatus.Allowed)
-                throw new Exception(on ? "Wi-Fi is off and Windows didn’t let TwinDesk switch it on" : "Windows didn’t let TwinDesk switch Wi-Fi off");
+                throw new Exception(on ? "Wi-Fi is off and Windows didn’t let DuoDesk switch it on" : "Windows didn’t let DuoDesk switch Wi-Fi off");
             for (int i = 0; i < 50 && (r.State == RadioState.On) != on; i++) await Task.Delay(100);
             if (on && r.State != RadioState.On) throw new Exception("Wi-Fi didn’t switch on");
             if (on) await Task.Delay(1500); // the adapter comes up after the radio

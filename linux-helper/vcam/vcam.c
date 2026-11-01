@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // twindesk-vcam <device>: the virtual camera's writer on Linux (linux/vcam.js). Frames come on
 // stdin, each 1280×720 NV12 (shared/vcam-feed.js); the newest goes to the v4l2loopback device as
 // YUYV, which every app reads, 30 times a second. With none for a while (no camera shown): black.
@@ -108,7 +109,7 @@ int main(int argc, char **argv) {
     struct pollfd pf = { .fd = 0, .events = POLLIN };
     if (poll(&pf, 1, (int)(next - t)) <= 0) continue;
     ssize_t n = read(0, in + got, NV12 - got);
-    if (n == 0) break; // TwinDesk stopped: the camera goes with it
+    if (n == 0) break; // DuoDesk stopped: the camera goes with it
     if (n > 0 && (got += (size_t)n) == NV12) {
       to_yuyv(in, out);
       got = 0;

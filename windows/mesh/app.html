@@ -1,23 +1,25 @@
 <!doctype html>
 <!-- TwinDesk — Copyright (C) 2026 inukaasith, Erdoğan Yeşil. GPL-3.0, see LICENSE. -->
+<!-- DuoDesk modifications, 2026. GPL-3.0. -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <base href="../"><!-- multi-device: this page is windows/mesh/app.html; everything else loads from windows/ -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:">
-  <title>TwinDesk</title>
+  <title>DuoDesk</title>
   <link rel="stylesheet" href="mesh/app.css">
   <link rel="stylesheet" href="mesh/app-pages.css">
   <link rel="stylesheet" href="../shared/phonehub.css">
   <link rel="stylesheet" href="../shared/updater.css">
   <link rel="stylesheet" href="../shared/ui-device.css">
+  <link rel="stylesheet" href="../shared/duodesk.css">
 </head>
 <body>
   <nav id="sidebar" aria-label="Sections">
     <div class="identity">
       <div class="app-mark" aria-hidden="true"></div>
       <div class="who">
-        <div class="app-name">TwinDesk<span class="mesh-pill" title="Multi-device is on: Mesh mode, in beta">MESH <span>beta</span></span></div>
+        <div class="app-name">DuoDesk<span class="mesh-pill" title="Multi-device is on: Mesh mode, in beta">MESH <span>beta</span></span></div>
         <div class="peer"><span id="peer-dot" class="dot"></span><span id="peer-text">Not paired</span></div>
       </div>
     </div>
@@ -57,6 +59,7 @@
   <script src="ui-terminal.js"></script>
   <script src="../shared/ui-nowplaying.js"></script>
   <script src="ui-audio.js"></script>
+  <script src="../shared/ui-camera.js"></script>
   <script src="ui-apps.js"></script>
   <script src="mesh/ui-phone.js"></script>
   <script src="../shared/ui-device.js"></script>
@@ -74,6 +77,7 @@
   <script src="../shared/pairpop.js"></script>
   <script src="../shared/ui-updater-modal.js"></script>
   <script src="../shared/sidebar-model.js"></script>
+  <script src="../shared/duodesk-ui.js"></script>
   <script src="mesh/app.js"></script>
 </body>
 </html>

@@ -13,5 +13,5 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
-rootProject.name = "TwinDesk"
+rootProject.name = "DuoDesk"
 include(":app")

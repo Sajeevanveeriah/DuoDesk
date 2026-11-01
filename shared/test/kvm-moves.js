@@ -1,3 +1,4 @@
+// DuoDesk modifications: 2026-11-01; original notices retained.
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
 // Tests for shared/kvm-moves.js: moves summed per turn, held while backed up, flushed before a click.
 // Run with: node shared/test/kvm-moves.js
@@ -43,7 +44,7 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   {
     const out = [];
     let backlog = 100000;
-    const m = new KvmMoves({ send: (x) => out.push(x), backlog: () => backlog, limit: () => 16384, maxWait: () => 1000 });
+    const m = new KvmMoves({ send: (x) => out.push(x), backlog: () => backlog, limit: () => 16384, maxWait: () => Infinity });
     for (let i = 0; i < 50; i++) {
       m.add(1, 0);
       await wait(1);
@@ -54,18 +55,26 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
     assert.deepStrictEqual(out, [{ dx: 50, dy: 0 }], 'one message with all of it');
   }
 
-  // Backed up for good: one goes every maxWait, so the pointer still moves.
+  // Persistent backpressure: exercise the 16 ms deadline with a controlled clock, rather
+  // than assuming Windows schedules a particular number of 1 ms timers in 200 ms.
   {
     const out = [];
-    const m = new KvmMoves({ send: (x) => out.push(x), backlog: () => 1e6, limit: () => 16384, maxWait: () => 16 });
-    const end = Date.now() + 200;
-    while (Date.now() < end) {
-      m.add(1, 0);
-      await wait(1);
-    }
-    await wait(30);
-    assert.ok(out.length >= 6 && out.length <= 16, `about one per 16 ms (${out.length})`);
-    assert.ok(out.reduce((s, x) => s + x.dx, 0) > 100, 'nothing lost');
+    const m = new KvmMoves({ send: x => out.push(x), backlog: () => 1e6, limit: () => 16384, maxWait: () => 16 });
+    const originalNow = Date.now;
+    let now = 1000;
+    Date.now = () => now;
+    m._schedule = () => {}; // the test advances scheduling explicitly
+    try {
+      m.add(3, 2); m._try();
+      now += 15; m.add(4, 1); m._try();
+      assert.deepStrictEqual(out, [], 'backpressure holds movement before the deadline');
+      now += 1; m._try();
+      assert.deepStrictEqual(out, [{ dx: 7, dy: 3 }], 'deadline releases all accumulated movement');
+      now += 1; m.add(5, 6); m._try();
+      now += 16; m._try();
+      assert.deepStrictEqual(out, [{ dx: 7, dy: 3 }, { dx: 5, dy: 6 }], 'next batch has its own deadline');
+      assert.strictEqual(out.reduce((sum, x) => sum + x.dx, 0), 12, 'nothing lost');
+    } finally { m.drop(); Date.now = originalNow; }
   }
 
   // Through Bluetooth: every delay ms, and held (no maxWait) while the radio is behind.

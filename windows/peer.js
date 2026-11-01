@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // The one session this PC has, whichever side opened it:
 //   guest — we connected to a Mac or another computer (link.js), the usual case;
 //   host  — another PC or a Linux computer connected to our server (server.js + hostpair.js).
@@ -51,7 +52,7 @@ class Peer {
     server.on('listening', () => { this.host = { on: true, error: '' }; this._changed(); });
     server.on('listenError', (err) => {
       console.error('[server]', err.code || err.message);
-      this.host = { on: false, error: err.code === 'EADDRINUSE' ? 'Port ' + P.PORT + ' is in use (another copy of TwinDesk?)' : err.code || err.message };
+      this.host = { on: false, error: err.code === 'EADDRINUSE' ? 'Port ' + P.PORT + ' is in use (another copy of DuoDesk?)' : err.code || err.message };
       this._changed();
     });
     server.on('client', (ctx) => {

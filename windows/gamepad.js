@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // Remote › Real gamepad on Windows (shared/phone-remote.js's pad driver): the phone's gamepad as an
 // Xbox 360 controller every game sees, through the ViGEmBus driver. ViGEmBus is installed the first
 // time it's turned on (one UAC prompt, scripts/vigem-install.ps1: its signed installer, checked by
@@ -29,7 +30,7 @@ const driver = {
   name: 'Xbox 360 controller',
 
   async check() {
-    if (!fs.existsSync(EXE)) return { supported: false, message: 'Not in this build of TwinDesk' };
+    if (!fs.existsSync(EXE)) return { supported: false, message: 'Not in this build of DuoDesk' };
     return { supported: true, installed: (await status()).bus === true };
   },
 

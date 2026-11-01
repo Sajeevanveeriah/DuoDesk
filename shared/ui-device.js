@@ -1,3 +1,4 @@
+// DuoDesk modifications: 2026-11-01; original notices retained.
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
 // Overview (Mac, PC and Linux): the connected device itself, shown once something is connected;
 // the device's tile at the top of the sidebar opens it too. Before that, Connection is the start.
@@ -213,7 +214,7 @@
         if (!on) return;
         const p = UI.peer(s);
         const info = ph.info || {};
-        const ctl = (phone ? ph.ctl : s.peerCtl) || null; // what the other side can do (deviceDo), null: an older TwinDesk
+        const ctl = (phone ? ph.ctl : s.peerCtl) || null; // what the other side can do (deviceDo), null: an older DuoDesk
 
         // hero
         const devName = phone && c ? c.name : (s.peer && s.peer.name) || (s.client && s.client.name) || p.name;
@@ -356,7 +357,7 @@
 
         // most used apps: the phone's own order (Usage access), else what was opened from here
         const apps = (UI.phoneAssets && UI.phoneAssets.apps) || [];
-        const top = (phone && (ph.top || [])).map((id) => apps.find((a) => a.id === id)).filter(Boolean).slice(0, 8);
+        const top = (phone ? (ph.top || []) : []).map((id) => apps.find((a) => a.id === id)).filter(Boolean).slice(0, 8);
         appsCard.hidden = !top.length || ov.apps === false;
         const ak = JSON.stringify([top.map((a) => a.id), ready]);
         if (ak !== appsKey) {

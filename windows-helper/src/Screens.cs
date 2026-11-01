@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // Monitors (physical pixels; the process is per-monitor DPI aware), outer edges, offsets along a
 // side, landing points, clamping and the DPI scale under a point.
 using System;
@@ -40,16 +41,7 @@ namespace MacShare
         // On the outer edge of `side` (within 1 px) with no other monitor continuing beyond it.
         public static bool OnOuterEdge(int x, int y, string side)
         {
-            Rectangle m;
-            if (!MonitorAt(x, y, out m)) return false;
-            switch (side)
-            {
-                case "left": return x <= m.Left + 1 && !Contains(m.Left - 1, y);
-                case "right": return x >= m.Right - 2 && !Contains(m.Right, y);
-                case "top": return y <= m.Top + 1 && !Contains(x, m.Top - 1);
-                case "bottom": return y >= m.Bottom - 2 && !Contains(x, m.Bottom);
-            }
-            return false;
+            return EdgePolicy.Outer(All(), x, y, side);
         }
 
         // Outward component of a motion for `side` (positive = pushing through it).

@@ -15,9 +15,13 @@ import android.webkit.ConsoleMessage
 import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
 import android.webkit.WebView
+import android.webkit.WebViewClient
+import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
 import org.json.JSONObject
 
 class WebHost(ctx: Context, page: String, private val core: Core, private val onEvent: (String, JSONObject?) -> Unit = { _, _ -> }) {
+    private val bridgePage = page.also { require(it in WebPolicy.pages) { "Unknown bundled page" } }
     private val main = Handler(Looper.getMainLooper())
     private var ready = false
     private val queue = mutableListOf<JSONObject>()
@@ -26,8 +30,24 @@ class WebHost(ctx: Context, page: String, private val core: Core, private val on
     val view: WebView = WebView(ctx).apply {
         settings.javaScriptEnabled = true
         settings.mediaPlaybackRequiresUserGesture = false
-        settings.allowFileAccess = true
+        // Bundled android_asset pages remain available with arbitrary file access disabled.
+        settings.allowFileAccess = false
+        settings.allowContentAccess = false
+        @Suppress("DEPRECATION")
+        settings.allowFileAccessFromFileURLs = false
+        @Suppress("DEPRECATION")
+        settings.allowUniversalAccessFromFileURLs = false
         settings.domStorageEnabled = false
+        webViewClient = object : WebViewClient() {
+            override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest) = true
+            @Deprecated("Legacy WebView callback")
+            override fun shouldOverrideUrlLoading(view: WebView, url: String) = true
+            override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
+                val url = request.url.toString()
+                if (url.startsWith("file:///android_asset/web/") || url == "about:blank") return null
+                return WebResourceResponse("text/plain", "UTF-8", 403, "Blocked", emptyMap(), java.io.ByteArrayInputStream(ByteArray(0)))
+            }
+        }
         setBackgroundColor(android.graphics.Color.BLACK)
         isFocusable = true
         isFocusableInTouchMode = true
@@ -37,7 +57,7 @@ class WebHost(ctx: Context, page: String, private val core: Core, private val on
                 android.graphics.Bitmap.createBitmap(1, 1, android.graphics.Bitmap.Config.ARGB_8888).apply { eraseColor(android.graphics.Color.BLACK) }
 
             override fun onConsoleMessage(m: ConsoleMessage): Boolean {
-                Log.i("TwinDesk", "web: ${m.message()}")
+                Log.i("DuoDesk", "web: ${m.message()}")
                 return true
             }
         }
@@ -47,7 +67,15 @@ class WebHost(ctx: Context, page: String, private val core: Core, private val on
 
     private inner class Bridge {
         @JavascriptInterface fun send(json: String) {
-            runCatching { core.send(JSONObject(json)) }
+            if (json.length > 256 * 1024) return
+            runCatching {
+                val message = JSONObject(json)
+                val type = message.optString("t")
+                if (!WebPolicy.canSend(bridgePage, type)) return
+                if (type == "pair.sync" && (message.optString("feature") != "remote" || message.optString("dir") != "out" || !message.optBoolean("on"))) return
+                if (bridgePage == "audio.html" && message.optString("dir") != "m2w") return
+                core.send(message)
+            }
         }
         @JavascriptInterface fun ready() = main.post {
             ready = true
@@ -63,11 +91,11 @@ class WebHost(ctx: Context, page: String, private val core: Core, private val on
         @JavascriptInterface fun event(name: String) = main.post { onEvent(name, null) }.let { }
         // The gamepad's Keys: a control's key (Remote.CONTROLS id, a KeyboardEvent.code, Mouse0..2 or "").
         @JavascriptInterface fun setPad(id: String, code: String) = main.post {
-            if (Remote.CONTROLS.any { it.first == id } && Remote.KEYS.any { it.first == code }) core.remote.setPad(id, code)
+            if (bridgePage == "remote.html" && Remote.CONTROLS.any { it.first == id } && Remote.KEYS.any { it.first == code }) core.remote.setPad(id, code)
         }.let { }
         // The gamepad's state, as a Bluetooth gamepad (BtPad: remote.html while a computer is connected to it).
         @JavascriptInterface fun pad(b: Int, lx: Double, ly: Double, rx: Double, ry: Double, lt: Double, rt: Double) {
-            if (core.btPadMade) core.btPad.pad(b, lx, ly, rx, ry, lt, rt)
+            if (bridgePage == "remote.html" && core.btPadMade && listOf(lx, ly, rx, ry, lt, rt).all { it.isFinite() }) core.btPad.pad(b, lx, ly, rx, ry, lt, rt)
         }
     }
 
@@ -312,8 +340,8 @@ class WifiFast(ctx: Context) {
     private val wm = ctx.applicationContext.getSystemService(android.net.wifi.WifiManager::class.java)
     @Suppress("DEPRECATION")
     private val locks = listOfNotNull(
-        runCatching { wm.createWifiLock(android.net.wifi.WifiManager.WIFI_MODE_FULL_LOW_LATENCY, "TwinDesk:screen") }.getOrNull(),
-        runCatching { wm.createWifiLock(android.net.wifi.WifiManager.WIFI_MODE_FULL_HIGH_PERF, "TwinDesk:screen-bg") }.getOrNull(),
+        runCatching { wm.createWifiLock(android.net.wifi.WifiManager.WIFI_MODE_FULL_LOW_LATENCY, "DuoDesk:screen") }.getOrNull(),
+        runCatching { wm.createWifiLock(android.net.wifi.WifiManager.WIFI_MODE_FULL_HIGH_PERF, "DuoDesk:screen-bg") }.getOrNull(),
     ).onEach { it.setReferenceCounted(false) }
     private var held = false
 
@@ -321,6 +349,6 @@ class WifiFast(ctx: Context) {
         if (on == held) return
         held = on
         for (l in locks) runCatching { if (on) l.acquire() else l.release() }
-        Log.i("TwinDesk", "wifi low latency ${if (on) "on" else "off"}")
+        Log.i("DuoDesk", "wifi low latency ${if (on) "on" else "off"}")
     }
 }

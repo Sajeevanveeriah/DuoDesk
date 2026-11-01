@@ -1,5 +1,6 @@
 #!/bin/sh
 # TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
+# DuoDesk modifications, 2026. GPL-3.0.
 # Creates dist/TwinDesk-<version>-<arch>.dmg from dist/TwinDesk.app (npm run dmg), named after
 # the app inside it like the other platforms' downloads: TwinDesk-2.3.0-arm64.dmg (Apple silicon)
 # or TwinDesk-2.3.0-x64.dmg (Intel), the words the updater tells them apart by (shared/updates.js
@@ -10,7 +11,7 @@
 set -e
 cd "$(dirname "$0")"
 
-APP="dist/TwinDesk.app"
+APP="dist/DuoDesk.app"
 if [ ! -d "$APP" ]; then
   echo "Error: $APP not found. Run ./build-app.sh first." >&2
   exit 1
@@ -19,18 +20,18 @@ fi
 # The version and architecture of the app that was built (build-app.sh x64 / arm64).
 VER="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Contents/Info.plist" 2>/dev/null \
   || node -p "require('./package.json').version")"
-ARCH="$(lipo -archs "$APP/Contents/MacOS/TwinDesk")"
+ARCH="$(lipo -archs "$APP/Contents/MacOS/DuoDesk")"
 case "$ARCH" in
   x86_64) ARCH=x64 ;;
   arm64) ;;
   *) echo "Error: $APP is '$ARCH', not one architecture (build-app.sh x64 or arm64)." >&2; exit 2 ;;
 esac
-DMG_NAME=${1:-TwinDesk-$VER-$ARCH.dmg}
+DMG_NAME=${1:-DuoDesk-$VER-$ARCH.dmg}
 case "$DMG_NAME" in
   */*) DMG="$DMG_NAME" ;;
   *) DMG="dist/$DMG_NAME" ;;
 esac
-VOLNAME="TwinDesk $VER"
+VOLNAME="DuoDesk $VER"
 VENV="dist/.dmgbuild"
 
 if [ ! -x "$VENV/bin/dmgbuild" ]; then
@@ -42,7 +43,7 @@ fi
 echo "Creating disk image $DMG..."
 rm -f "$DMG"
 "$VENV/bin/dmgbuild" -s dmg/settings.py \
-  -D app="$APP" -D icon=dist/TwinDesk.icns -D background=dmg/background.tiff \
+  -D app="$APP" -D icon=dist/DuoDesk.icns -D background=dmg/background.tiff \
   "$VOLNAME" "$DMG"
 
 echo "DMG created successfully: $DMG"

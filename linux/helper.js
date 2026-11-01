@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // Spawns linux-helper and talks JSON lines with it (copy of windows/helper.js).
 //   request(cmd, args, ms) -> Promise<reply>   (has an id, waits ms (3 s) for {"id","ok"})
 //   send(cmd, args)                        (fire-and-forget)
@@ -41,6 +42,7 @@ class Helper extends EventEmitter {
       this.emit('exit', -1);
       return;
     }
+    console.log('[startup] helper=' + BIN + ' session=' + (process.env.XDG_SESSION_TYPE || 'unknown'));
     const proc = spawn(BIN, [], { stdio: ['pipe', 'pipe', 'pipe'] });
     this.proc = proc;
     this.buf = '';

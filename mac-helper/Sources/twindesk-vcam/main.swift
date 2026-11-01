@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // twindesk-vcam (TwinDesk.app/Contents/MacOS, beside the app: the system extension it installs
 // must be in its main bundle): the virtual camera's side in TwinDesk (mac/vcam.js).
 //   activate    installs the Camera Extension (org.macshare.mac.camera); the first time macOS asks
@@ -20,7 +21,7 @@ let extensionID = "org.macshare.mac.camera"
 let args = Array(CommandLine.arguments.dropFirst())
 let cameraName: String = {
   if let i = args.firstIndex(of: "--name"), i + 1 < args.count { return args[i + 1] }
-  return "TwinDesk Camera"
+  return "DuoDesk Camera"
 }()
 let width = 1280, height = 720
 let frameBytes = width * height * 3 / 2

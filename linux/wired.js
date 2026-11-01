@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // A phone on a USB cable: the whole session goes through it, no Wi-Fi needed, and pairing too.
 // Copy of mac/wired.js.
 //   - adb sees a phone over USB (USB debugging allowed for this computer) with TwinDesk on it:
@@ -27,7 +28,7 @@ const usbadb = require('../shared/usbadb.js');
 const APP_ID = 'com.twindesk.android';
 const TURN_PORT = 47802;
 const POLL_MS = 2000;
-const RETRY_MS = 15000; // a phone without TwinDesk (or not answering yet) is looked at again after this
+const RETRY_MS = 15000; // a phone without DuoDesk (or not answering yet) is looked at again after this
 const TCPIP_PORT = 5555; // adb's TCP mode, where phone-bridge.js reaches the phone on a direct Wi-Fi link
 
 const isUsb = (serial) => !/[:]/.test(serial) && !serial.startsWith('emulator-') && !serial.includes('._adb-tls');

@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith, Erdoğan Yeşil. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // Notifications across every connected device (docs/mesh.md, one pool; windows/mesh/notifs.js with
 // ../notifs.js's way of reading them): this computer's notifications go to every device that accepts
 // them (`notif.policy`); we read them off the session bus (`dbus-monitor` on
@@ -52,7 +53,7 @@ class Notifs {
     this.selfName = opts.selfName;
     this.Notification = opts.Notification || electronNotification;
     this.spawn = opts.spawn || spawn;
-    this.iconsIn = electron.nativeImage ? new IconsIn(electron.nativeImage, path.join(__dirname, '..', 'assets', 'sidebar-icon@2x.png')) : null; // TwinDesk's for apps without one
+    this.iconsIn = electron.nativeImage ? new IconsIn(electron.nativeImage, path.join(__dirname, '..', 'assets', 'sidebar-icon@2x.png')) : null; // DuoDesk's for apps without one
     this.pool = new Pool({ name: 'notif', selfId: this.mesh.selfId, peers: () => notifPeers(this.mesh) });
     this.readable = null; // dbus-monitor could start
     this.apps = new Map(); // app → {app, appName, at} seen here
@@ -203,7 +204,7 @@ class Notifs {
     }
     const arg = (a) => (a && a.startsWith('string "') ? a.slice(8).replace(/"$/, '') : '');
     const appName = arg(args[0]);
-    if (!appName || /^(TwinDesk|Electron|macshare)/i.test(appName)) return; // ours (from another device)
+    if (!appName || /^(DuoDesk|Electron|macshare)/i.test(appName)) return; // ours (from another device)
     this._local({ id: String(Date.now()), app: appName, appName, title: arg(args[3]), body: arg(args[4]), at: Date.now() });
   }
 
@@ -215,7 +216,7 @@ class Notifs {
     const now = Date.now();
     this.echoes = this.echoes.filter((e) => e.until > now);
     if (this.echoes.some((e) => e.title === str(ev.title, 200) && str(ev.body).includes(e.body))) return;
-    if (isOwn(app, ev.appName)) return; // TwinDesk's own notifications are never forwarded
+    if (isOwn(app, ev.appName)) return; // DuoDesk's own notifications are never forwarded
     if (this.guard.repeat('out', app, ev.title, ev.body)) return;
     this.apps.set(app, { app, appName: str(ev.appName, 100) || app, at: Date.now() });
     if (this.apps.size > 60) this.apps.delete(this.apps.keys().next().value);

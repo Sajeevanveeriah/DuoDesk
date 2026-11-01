@@ -1,0 +1,17 @@
+{
+  "name": "duodesk-development",
+  "version": "2.5.0",
+  "private": true,
+  "license": "GPL-3.0",
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "test:ui": "node test/ui-runner.js",
+    "preview": "electron test/window.js"
+  },
+  "devDependencies": {
+    "electron": "^44.7.0",
+    "netlify-cli": "^23.11.0",
+    "playwright": "^1.56.0",
+    "ws": "^8.22.1"
+  }
+}

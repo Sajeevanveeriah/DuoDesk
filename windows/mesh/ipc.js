@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith, Erdoğan Yeşil. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // Main-window actions (preload-app.js → here). Every value is validated by settings.apply().
 const { ipcMain, dialog, shell, BrowserWindow, clipboard, Menu, app } = require('electron');
 const path = require('path');
@@ -130,6 +131,21 @@ function setupIpc(ctx) {
   handle('setOverview', (o) => o && typeof o === 'object' && change('ui', { overview: { ...settings.ui.overview, ...o } })); // General › Overview // invalid names fall back in normalize()
   handle('setMulti', (on) => require('../multi').set(on === true)); // Multi-device off: TwinDesk restarts one to one
   handle('setAudio', (partial) => change('audio', partial, () => sound.apply()));
+  handle('camera', (m) => {
+    if (!m || typeof m !== 'object') return;
+    if (m.do === 'on') return ctx.setCamera(m.on === true);
+    const c = ctx.camShare;
+    if (!c) return;
+    if (m.do === 'view') c.view(m.show === true);
+    else if (m.do === 'close') c.closeView();
+    else if (m.do === 'share') c.setShare(m.on === true);
+    else if (m.do === 'device') c.setDevice(m.id);
+    else if (m.do === 'stop') c.stopSending();
+    else if (m.do === 'devices') c.listDevices();
+    else if (m.do === 'virtual' && ctx.vcam) ctx.vcam.setOn(m.on === true);
+    else if (m.do === 'vcamRemove' && ctx.vcam) ctx.vcam.remove();
+    else if (m.do === 'rotate' && ctx.vcam) ctx.vcam.turn();
+  });
   handle('setTerminal', (partial) => {
     const p = partial && typeof partial === 'object' ? { enabled: partial.enabled, allowMac: partial.allowMac } : {};
     Object.keys(p).forEach((k) => p[k] === undefined && delete p[k]);
@@ -214,6 +230,11 @@ function setupIpc(ctx) {
       for (const v of ctx.phoneViews.list()) if (v.kind === 'screen') ctx.phoneViews.close(v.id);
     } else ctx.phoneViews.openScreen();
   });
+  phone('phoneCamera', (open, opts) => {
+    if (open === false) { for (const v of ctx.phoneViews.list()) if (v.kind === 'camera') ctx.phoneViews.close(v.id); }
+    else ctx.phoneViews.openCamera(opts);
+  });
+  phone('phoneListCameras', () => ctx.phone.bridge.listCameras());
   phone('phoneOpenApp', (arg) => arg && typeof arg.id === 'string' && ctx.phoneViews.openApp(arg.id.slice(0, 200), String(arg.name || '').slice(0, 100)));
   phone('phoneCloseView', (id) => ctx.phoneViews.close(Number(id)));
   // Right-click on a phone app: open it, or pin it to Start (phoneview.js).

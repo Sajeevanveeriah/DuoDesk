@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // Monitors from XRandR (physical pixels), outer edges, offsets along a side (
 // "Words"), landing points and clamping. Port of windows-helper/src/Screens.cs.
 #include "helper.h"
@@ -8,7 +9,8 @@
 #include <string.h>
 #include <X11/extensions/Xrandr.h>
 
-typedef struct { int x, y, w, h; } Rect;
+#include "edge-policy.h"
+typedef EdgeRect Rect;
 
 #define MAX_MON 16
 static Rect mons[MAX_MON];
@@ -91,18 +93,23 @@ void screens_box(int *x, int *y, int *w, int *h) {
   *x = l; *y = t; *w = r - l; *h = b - t;
 }
 
-// On the outer edge of `side` (within 1 px) with no other monitor continuing beyond it.
-int screens_on_outer_edge(int x, int y, int side) {
+// Outer desktop silhouette, including farther monitors separated by a gap.
+int screens_at_edge(int x, int y, int side) {
   const Rect *m = monitor_at(x, y);
-  if (!m) return 0;
-  int right = m->x + m->w, bottom = m->y + m->h;
-  switch (side) {
-    case SIDE_LEFT: return x <= m->x + 1 && !screens_contains(m->x - 1, y);
-    case SIDE_RIGHT: return x >= right - 2 && !screens_contains(right, y);
-    case SIDE_TOP: return y <= m->y + 1 && !screens_contains(x, m->y - 1);
-    case SIDE_BOTTOM: return y >= bottom - 2 && !screens_contains(x, bottom);
-  }
-  return 0;
+  return m && edge_at(m, x, y, side);
+}
+int screens_on_outer_edge(int x, int y, int side) {
+  return edge_outer(mons, nmon, x, y, side);
+}
+
+// One rejection line globally per two seconds, with enough topology to reproduce it.
+void screens_reject(const char *reason, int x, int y, int side) {
+  static double last = -2000;
+  double now = now_ms();
+  if (!edge_log_due(now, &last)) return;
+  fprintf(stderr, "[edge] refused reason=%s edge=%s position=(%d,%d) monitors=[", reason, side_name(side) ? side_name(side) : "none", x, y);
+  for (int i = 0; i < nmon; i++) fprintf(stderr, "%s(%d,%d,%d,%d)", i ? "," : "", mons[i].x, mons[i].y, mons[i].w, mons[i].h);
+  fprintf(stderr, "]\n");
 }
 
 // Outward component of a motion for `side` (positive = pushing through it).

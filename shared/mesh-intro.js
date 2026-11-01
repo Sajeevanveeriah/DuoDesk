@@ -1,3 +1,4 @@
+// DuoDesk modifications: 2026-11-01; original notices retained.
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
 // Multi-device (Mesh mode, beta) in the one-to-one app: the picture of a mesh on its tab, and the popup
 // before it's turned on, which says it's in beta (docs/multi-device.md).
@@ -51,7 +52,7 @@
       title,
       el('p', '', 'Mesh mode is still in beta, and you may run into some issues with it.'),
       el('p', '', 'If you connect only two devices, keep it off.'),
-      el('div', 'hint', 'TwinDesk restarts when you turn it on or off.'),
+      el('div', 'hint', 'DuoDesk restarts when you turn it on or off.'),
     );
     const cancel = el('button', 'btn', 'Cancel');
     const ok = el('button', 'btn primary', 'Turn on');

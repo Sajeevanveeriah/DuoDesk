@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // Files tab (copy of windows/ui-files.js): Send files (drop zone + Choose…) and copy/paste files
 // with shortcuts, then two direction cards — files and the other computer's folder coming here,
 // files and this computer's folder going there — then transfers. Drags across the edge, Monitor 2
@@ -62,8 +63,8 @@ UI.tab({
     const copyRow = UI.row('Copy', 'Select files in the file manager first', [copyRec]);
     const pasteRow = UI.row('Paste', '', [pasteRec]);
 
-    const edgeDrag = sw('Drag files across the screen edge', (v) => api.setFiles({ edgeDrag: v }));
-    const edgeRow = UI.row('Drag files between computers', '', [edgeDrag]);
+    const edgeDrag = sw('Drop files at the screen edge', (v) => api.setFiles({ edgeDrag: v }));
+    const edgeRow = UI.row('Send files at the screen edge', '', [edgeDrag]);
     const cancelBtn = UI.button('Cancel', () => api.cancelDrop(), 'small');
     const outRow = UI.row('', '', [cancelBtn]);
     const inRow = UI.row('', '');
@@ -104,8 +105,8 @@ UI.tab({
           : 'Into the app in front (a chat, a mail…), or the file manager folder in front, else ' + UI.receivedName(s));
       edgeDrag.set(f.edgeDrag);
       edgeRow.setHint(f.edgeDrag && f.macDrags === false ? 'Turned off on {name}'
-        : !f.edgeDrag ? '' : f.session === 'wayland' ? 'From ' + p.the + ': drop on a folder or the desktop. From here: needs an Xorg session'
-          : 'Drag through the screen edge. Here, drop on a folder or the desktop');
+        : !f.edgeDrag ? '' : f.session === 'wayland' ? 'From ' + p.the + ': drop on a folder or the desktop. From here: use Send files or an Xorg session'
+          : 'Drop files at the outer edge to send them. The pointer stays on this computer.');
       mount.set(f.mountMac);
       openBtn.hidden = !m.drive && !m.wifi;
       macDrive.setHint(m.mountMessage || (!f.mountMac ? '' : m.drive ? 'In the file manager’s sidebar' : m.busy === 'mount' ? 'Connecting…'

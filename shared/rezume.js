@@ -1,3 +1,4 @@
+// DuoDesk modifications: 2026-11-01; original notices retained.
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
 // ReZume (Mac, PC and Linux, with a computer or a phone): what is in use on one device, to go on
 // with on the other. A browser tab (its address), a document (its file, sent when it's taken), or a
@@ -234,7 +235,7 @@ class ReZume extends EventEmitter {
       } catch (_) { /* through the session below */ }
     }
     if (!pp || !pp.on || !(a.kind === 'web' ? pp.web : pp.docs)) {
-      this.message = !pp ? '{name} has no ReZume yet: update TwinDesk there' : 'ReZume is off on {name}';
+      this.message = !pp ? '{name} has no ReZume yet: update DuoDesk there' : 'ReZume is off on {name}';
       this.emit('change');
       return false;
     }

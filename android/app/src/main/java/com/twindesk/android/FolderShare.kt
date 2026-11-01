@@ -116,7 +116,7 @@ class FolderShare(core: Core) : Feature(core) {
                 val d = dav ?: Dav(f, secret, volumeName(f), ShareKey.ssl(), ::fromComputer).also { it.start(); dav = it }
                 core.send(msg(Proto.T.SHARE_OFFER, "on" to true, "port" to d.port, "secret" to secret, "name" to volumeName(f), "cert" to ShareKey.cert()))
             }.onFailure {
-                Log.w("TwinDesk", "share: $it")
+                Log.w("DuoDesk", "share: $it")
                 error = it.message ?: "didn’t start"
                 stopDav()
                 core.send(msg(Proto.T.SHARE_OFFER, "on" to false))
@@ -192,7 +192,7 @@ object ShareKey {
                     KeyGenParameterSpec.Builder(ALIAS, KeyProperties.PURPOSE_SIGN)
                         .setAlgorithmParameterSpec(ECGenParameterSpec("secp256r1"))
                         .setDigests(KeyProperties.DIGEST_NONE, KeyProperties.DIGEST_SHA256, KeyProperties.DIGEST_SHA384, KeyProperties.DIGEST_SHA512)
-                        .setCertificateSubject(X500Principal("CN=TwinDesk phone"))
+                        .setCertificateSubject(X500Principal("CN=DuoDesk phone"))
                         .setCertificateNotBefore(Date(System.currentTimeMillis() - 86_400_000L))
                         .setCertificateNotAfter(Date(4_102_444_800_000L)) // 2100
                         .build(),

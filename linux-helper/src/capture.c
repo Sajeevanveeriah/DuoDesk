@@ -1,10 +1,12 @@
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // XInput2 raw events on the root window: edge push at home, the return edge, the hotkey, and
 // capture (pointer/keyboard grabs, the pointer hidden and parked) with the safety rules.
 // Port of windows-helper/src/Capture.cs (itself adapted from Beamer, GPL-3.0; see
 // THIRD_PARTY_NOTICES). Raw events reach us even while another
 // client (or we) hold a grab, and give deltas while the pointer is stuck at an edge.
 #include "helper.h"
+#include "edge-policy.h"
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -29,7 +31,7 @@ static int capturing, capMouse, capKeys;
 static int ptrGrabbed, kbGrabbed, cursorHidden;
 static int savedX, savedY;
 static unsigned char heldKeys[256], swallowKeys[256];
-static unsigned char heldButtons[32], swallowButtons[32];
+static unsigned char heldButtons[32], swallowButtons[32], localButtons[32];
 static double swallowSince;
 static double lastCmd;
 
@@ -53,6 +55,8 @@ static double arrivalAt, arrivalInward;
 // and the way back only cross inside them. -1: anywhere.
 static double edgeZ[8][2], retZ[8][2];
 static int nEdgeZ = -1, nRetZ = -1;
+static double edgeBySide[4][8][2], retBySide[4][8][2];
+static int edgeCounts[4] = {-1,-1,-1,-1}, retCounts[4] = {-1,-1,-1,-1};
 
 #ifdef MULTI
 // Multi-device's helper (macshare-linuxhelper-multi, built with -DMULTI, docs/multi-device.md):
@@ -202,6 +206,8 @@ void capture_config(const JObj *c) {
   cooldownMs = jnum(c, "cooldownMs", 250);
   dwellMs = jnum(c, "dwellMs", 150);
   nEdgeZ = zones_parse(jstr(c, "zones", NULL), edgeZ, 8);
+  JObj *zoneMap = jobj(c, "zonesBySide");
+  for (int i = 0; i < 4; i++) edgeCounts[i] = zones_parse(jstr(zoneMap, side_name(i), jstr(c, "zones", NULL)), edgeBySide[i], 8);
   shortcut_config(c);
   drop_config(c);
 #ifdef MULTI
@@ -226,14 +232,28 @@ void capture_arrived(int s) {
 
 // 0 while a crossing through `s` has to wait (cooldown, arrival guard). `outward`: this move's
 // outward part for that side (negative = inward).
-static int may_cross(int s, double outward) {
+static int may_cross(int x, int y, int s, double outward, double zones[][2], int nZones) {
   double now = now_ms();
-  if (now - lastCross < cooldownMs) return 0;
-  if (arrivalSide != SIDE_NONE && arrivalSide == s) {
-    if (outward < 0) arrivalInward -= outward;
-    if (now - arrivalAt < GUARD_MS && arrivalInward < 8) return 0;
-    arrivalSide = SIDE_NONE;
-  }
+  if (s < 0 || s > 3) return 0;
+  int returning = zones == retZ;
+  zones = returning ? retBySide[s] : edgeBySide[s];
+  nZones = returning ? retCounts[s] : edgeCounts[s];
+  if (arrivalSide == s && outward < 0) arrivalInward -= outward;
+  if (outward <= 0 || !screens_at_edge(x, y, s)) return 0;
+  // Query the authoritative XI2 button bitmap, including side buttons already held
+  // when the helper started. A missed release cannot leave a stale local latch.
+  Window rr, cr; double qx, qy, wx, wy; int device = 0;
+  XIButtonState state = {0}; XIModifierState mods; XIGroupState group;
+  int buttons = inject_buttons_held();
+  if (!XIGetClientPointer(dpy_in, None, &device) ||
+      !XIQueryPointer(dpy_in, device, root_in, &rr, &cr, &qx, &qy, &wx, &wy, &state, &mods, &group)) buttons = 1;
+  else for (int b = 1; b < state.mask_len * 8; b++)
+    if ((b < 4 || b >= 8) && XIMaskIsSet(state.mask, b)) buttons = 1;
+  if (state.mask) XFree(state.mask);
+  int arriving = arrivalSide == s && now - arrivalAt < GUARD_MS && arrivalInward < 8;
+  const char *why = edge_refusal(screens_on_outer_edge(x, y, s), zones_contain(zones, nZones, x, y, s), buttons, now - lastCross, cooldownMs, arriving);
+  if (why) { screens_reject(why, x, y, s); return 0; }
+  if (arrivalSide == s) arrivalSide = SIDE_NONE;
   return 1;
 }
 
@@ -354,7 +374,14 @@ void capture_stop(int toSide, double offset, int hasSide) {
   capture_arrived(hasSide ? toSide : SIDE_NONE);
 }
 
-void capture_return_zones(const char *text) { nRetZ = zones_parse(text, retZ, 8); }
+void capture_return_zones(const char *text) {
+  nRetZ = zones_parse(text, retZ, 8);
+  for (int i = 0; i < 4; i++) retCounts[i] = zones_parse(text, retBySide[i], 8);
+}
+void capture_return_zone_map(const JObj *map) {
+  if (!map) return;
+  for (int i = 0; i < 4; i++) if (jhas(map, side_name(i))) retCounts[i] = zones_parse(jstr(map, side_name(i), NULL), retBySide[i], 8);
+}
 
 void capture_arm_return(int on, int s, double resistance) {
   retArmed = on && s != SIDE_NONE;
@@ -378,66 +405,15 @@ static void repeat_tick(double now);
 
 // The drag crossed: capture now without grabs (the file manager holds them), the pointer held on
 // the strip (sx… : its rectangle), and tell main `edge {offset, drag:{paths}}`.
+// Legacy entry points intentionally cannot hand the cursor over with a held button.
+// drop.c now stages paths and emits fileHandoff only when the user releases the drop.
 void capture_drag_cross(const char *paths, int x, int y, int sx, int sy, int sw, int sh) {
-  if (capturing || !driveOther || side == SIDE_NONE) return;
-  capturing = 1; capMouse = 1; capKeys = edgeKeyboard;
-  soft = 1; softUp = 0; softSince = now_ms();
-  memset(heldKeys, 0, sizeof heldKeys);
-  memset(heldButtons, 0, sizeof heldButtons); // the left button's release goes over: it drops there
-  capture_touch();
-  push = 0;
-#ifdef MULTI
-  memset(pushBy, 0, sizeof pushBy);
-#endif
-  lastCross = now_ms();
-  arrivalSide = SIDE_NONE;
-  savedX = x < sx ? sx : x > sx + sw - 1 ? sx + sw - 1 : x;
-  savedY = y < sy ? sy : y > sy + sh - 1 ? sy + sh - 1 : y;
-  XWarpPointer(dpy_in, None, root_in, 0, 0, 0, 0, savedX, savedY);
-  // Barriers let the pointer move along the strip but not off it (directions = where it may pass).
-  int r = sx + sw, b = sy + sh;
-  nbars = 0;
-  if (side == SIDE_LEFT || side == SIDE_RIGHT) {
-    int bx = side == SIDE_RIGHT ? sx : r;
-    bars[nbars++] = XFixesCreatePointerBarrier(dpy_in, root_in, bx, sy, bx, b, side == SIDE_RIGHT ? BarrierPositiveX : BarrierNegativeX, 0, NULL);
-    bars[nbars++] = XFixesCreatePointerBarrier(dpy_in, root_in, sx, sy, r, sy, 0, 0, NULL);
-    bars[nbars++] = XFixesCreatePointerBarrier(dpy_in, root_in, sx, b, r, b, 0, 0, NULL);
-  } else {
-    int by = side == SIDE_BOTTOM ? sy : b;
-    bars[nbars++] = XFixesCreatePointerBarrier(dpy_in, root_in, sx, by, r, by, side == SIDE_BOTTOM ? BarrierPositiveY : BarrierNegativeY, 0, NULL);
-    bars[nbars++] = XFixesCreatePointerBarrier(dpy_in, root_in, sx, sy, sx, b, 0, 0, NULL);
-    bars[nbars++] = XFixesCreatePointerBarrier(dpy_in, root_in, r, sy, r, b, 0, 0, NULL);
-  }
-  if (!cursorHidden) { XFixesHideCursor(dpy_ev, root_ev); cursorHidden = 1; }
-  XFlush(dpy_in);
-  XFlush(dpy_ev);
-  size_t cap = strlen(paths) + 128;
-  char *line = malloc(cap);
-  snprintf(line, cap, "{\"event\":\"edge\",\"offset\":%.4f,\"drag\":{\"paths\":%s}}", screens_offset(x, y, side), paths);
-  emit(line);
-  free(line);
+  (void)paths; (void)sx; (void)sy; (void)sw; (void)sh;
+  screens_reject("button", x, y, side);
 }
-
-// A file drag caught on the way back (drop.c, while driven): the input goes home with its files
-// (`return {offset, drag:{paths}}`), and the driver's button that holds it here is let go on the
-// strip, where the drop does nothing.
 void capture_drag_return(const char *paths, int x, int y, int s) {
-  if (!retArmed || capturing) return;
-  retArmed = 0;
-#ifdef MULTI
-  memset(retPushBy, 0, sizeof retPushBy);
-#endif
-  lastCross = now_ms();
-  size_t cap = strlen(paths) + 160;
-  char *line = malloc(cap);
-#ifdef MULTI
-  snprintf(line, cap, "{\"event\":\"return\",\"side\":\"%s\",\"offset\":%.4f,\"drag\":{\"paths\":%s}}", side_name(s), screens_offset(x, y, s), paths);
-#else
-  snprintf(line, cap, "{\"event\":\"return\",\"offset\":%.4f,\"drag\":{\"paths\":%s}}", screens_offset(x, y, s), paths);
-#endif
-  emit(line);
-  free(line);
-  inject_button_up(0);
+  (void)paths;
+  screens_reject("button", x, y, s);
 }
 
 void capture_watch_release(int on) { watchRel = on; }
@@ -587,6 +563,7 @@ static void on_key(int ev, int down) {
 // X buttons: 1 left, 2 middle, 3 right, 4/5 wheel up/down, 6/7 wheel left/right, 8/9 back/forward.
 static void on_button(int xb, int down) {
   if (xb < 0 || xb >= 32) return;
+  if (xb == 1 || xb == 2 || xb == 3 || xb >= 8) localButtons[xb] = (unsigned char)down;
   if (xb == 1) { leftDown = down; if (!down && soft) softUp = 1; }
   if (xb == 1 && !down && watchRel && !capturing) { watchRel = 0; emit("{\"event\":\"released\"}"); }
   if (!down && swallowButtons[xb]) { swallowButtons[xb] = 0; release_grabs(); return; }
@@ -617,13 +594,12 @@ static void on_button(int xb, int down) {
 #ifdef MULTI
 // Every armed side counts, summed on its own; the first through says which side it left by.
 void capture_feed_return(int x, int y, double dx, double dy) {
-  if (!retArmed || drop_holding()) return;
+  if (!retArmed) return;
   double now = now_ms();
   for (int i = 0; i < nret; i++) {
     int s = retSides[i];
     double outward = screens_outward(s, dx, dy);
-    if (!may_cross(s, outward)) { retPushBy[s] = 0; continue; }
-    if (outward <= 0 || !screens_on_outer_edge(x, y, s) || !zones_contain(retZ, nRetZ, x, y, s)) { retPushBy[s] = 0; continue; }
+    if (!may_cross(x, y, s, outward, retZ, nRetZ)) { retPushBy[s] = 0; continue; }
     if (now - retLastBy[s] > 300) retPushBy[s] = 0;
     retLastBy[s] = now;
     if (retPushBy[s] == 0) retSinceBy[s] = now;
@@ -644,13 +620,13 @@ void capture_feed_return(int x, int y, double dx, double dy) {
 
 // At home: the first watched side pushed through takes the pointer there (`edge` names the side).
 static void multi_edge_push(int x, int y, unsigned mask, double rdx, double rdy) {
-  if (!driveOther || !nsides || (mask & (Button1Mask | Button2Mask | Button3Mask))) { memset(pushBy, 0, sizeof pushBy); return; } // rule 6
+  if (!driveOther || !nsides) { memset(pushBy, 0, sizeof pushBy); return; } // rule 6
+  (void)mask;
   double now = now_ms();
   for (int i = 0; i < nsides; i++) {
     int s = sides[i];
     double outward = screens_outward(s, rdx, rdy);
-    if (!may_cross(s, outward)) { pushBy[s] = 0; continue; }
-    if (outward <= 0 || !screens_on_outer_edge(x, y, s) || !zones_contain(edgeZ, nEdgeZ, x, y, s)) { pushBy[s] = 0; continue; }
+    if (!may_cross(x, y, s, outward, edgeZ, nEdgeZ)) { pushBy[s] = 0; continue; }
     if (now - lastPushBy[s] > 300) pushBy[s] = 0;
     lastPushBy[s] = now;
     if (pushBy[s] == 0) pushSinceBy[s] = now;
@@ -671,10 +647,9 @@ static void multi_edge_push(int x, int y, unsigned mask, double rdx, double rdy)
 }
 #else
 void capture_feed_return(int x, int y, double dx, double dy) {
-  if (!retArmed || drop_holding()) return;
+  if (!retArmed) return;
   double outward = screens_outward(retSide, dx, dy);
-  if (!may_cross(retSide, outward)) { retPush = 0; return; }
-  if (outward <= 0 || !screens_on_outer_edge(x, y, retSide) || !zones_contain(retZ, nRetZ, x, y, retSide)) { retPush = 0; return; }
+  if (!may_cross(x, y, retSide, outward, retZ, nRetZ)) { retPush = 0; return; }
   double now = now_ms();
   if (now - retLast > 300) retPush = 0;
   retLast = now;
@@ -710,10 +685,9 @@ static void on_motion(double dx, double dy, double rdx, double rdy) {
 #ifdef MULTI
   multi_edge_push(x, y, mask, rdx, rdy);
 #else
-  if (!driveOther || side == SIDE_NONE || (mask & (Button1Mask | Button2Mask | Button3Mask))) { push = 0; return; } // rule 6
+  if (!driveOther || side == SIDE_NONE) { push = 0; return; } // rule 6
   double outward = screens_outward(side, rdx, rdy);
-  if (!may_cross(side, outward)) { push = 0; return; }
-  if (outward <= 0 || !screens_on_outer_edge(x, y, side) || !zones_contain(edgeZ, nEdgeZ, x, y, side)) { push = 0; return; }
+  if (!may_cross(x, y, side, outward, edgeZ, nEdgeZ)) { push = 0; return; }
   double now = now_ms();
   if (now - lastPush > 300) push = 0;
   lastPush = now;

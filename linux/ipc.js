@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // Main-window actions (preload-app.js → here; copy of windows/ipc.js). Every value is validated by
 // settings.apply().
 const { app, ipcMain, dialog, shell, BrowserWindow, clipboard } = require('electron');
@@ -13,7 +14,11 @@ const { apply } = require('./settings');
 function setupIpc(ctx) {
   const { link, discovery, screen, clip, kvm, fileDrop, smb, fileClip, sound, pcScreen, notifs, wake, sshd, apps, pcApps, peerApps, settings } = ctx;
 
-  const handle = (name, fn) => ipcMain.handle(name, (_e, ...args) => fn(...args));
+  const handle = (name, fn) => ipcMain.handle(name, (event, ...args) => {
+    const win = ctx.mainWindow && ctx.mainWindow();
+    if (!win || win.isDestroyed() || event.sender !== win.webContents || event.senderFrame !== win.webContents.mainFrame) throw new Error('Untrusted app caller');
+    return fn(...args);
+  });
   const change = (section, partial, after) => {
     if (!apply(settings, section, partial)) return;
     ctx.save();
@@ -106,7 +111,7 @@ function setupIpc(ctx) {
   handle('setTab', (tab) => change('ui', { tab }));
   handle('setChats', (on) => { change('ui', { chats: on === true }); if (ctx.chats && ctx.chats()) ctx.chats().sync(); }); // Messages: WhatsApp, Telegram and Instagram there too
   handle('setOverview', (o) => o && typeof o === 'object' && change('ui', { overview: { ...settings.ui.overview, ...o } })); // General › Overview // invalid names fall back in normalize()
-  handle('setMulti', (on) => require('./multi').set(on === true)); // Multi-device: TwinDesk restarts
+  handle('setMulti', (on) => require('./multi').set(on === true)); // Multi-device: DuoDesk restarts
   handle('setAudio', (partial) => change('audio', partial, () => {
     sound.apply();
     // Loaded when first turned on (applied then); off, the loaded one stops.

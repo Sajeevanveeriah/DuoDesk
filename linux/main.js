@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // Main process (Linux): lifecycle, windows, tray, IPC and the state pushed to the
 // main window. Follows windows/main.js: L0–L2 discovery, pairing, clipboard, the other screen in a
 // window; L3 mouse and keyboard (kvm.js + linux-helper); L4 the host role (server, pairing
@@ -80,7 +81,9 @@ app.commandLine.appendSwitch('enable-features', 'WebRTCPipeWireCapturer');
 if (!app.commandLine.hasSwitch('user-data-dir')) app.setPath('userData', path.join(app.getPath('appData'), 'MacShare'));
 require('../shared/applog.js').start(app); // console.* and crashes into the log folder, both apps
 // Multi-device switched on (multi.js, docs/multi-device.md): mesh/main.js runs instead of everything below.
-if (require('./multi').on()) return void require('./mesh/main.js');
+const multiDeviceMode = require('./multi').on();
+console.log('[startup] mode=' + (multiDeviceMode ? 'multi-device' : 'one-to-one') + ' platform=linux');
+if (multiDeviceMode) return void require('./mesh/main.js');
 if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
@@ -337,7 +340,7 @@ function start() {
     },
   });
   updates.start();
-  const ipc = setupIpc({ devctl: () => devctl, chats: () => chats, qrPair: qrPairView, adbQr: adbQrDo, link, discovery, screen, clip, kvm, fileDrop, smb, fileClip, vdd, sound, pcScreen, notifs, wake, sshd, apps, pcApps, peerApps, updates, settings, save: saveSettings, push: pushState, buildState,
+  const ipc = setupIpc({ mainWindow: () => mainWin, devctl: () => devctl, chats: () => chats, qrPair: qrPairView, adbQr: adbQrDo, link, discovery, screen, clip, kvm, fileDrop, smb, fileClip, vdd, sound, pcScreen, notifs, wake, sshd, apps, pcApps, peerApps, updates, settings, save: saveSettings, push: pushState, buildState,
     get rezume() { return rezume; }, loadReZume,
     get phone() { return phone; }, get phoneViews() { return phoneViews; }, get camShare() { return camShare; }, get vcam() { return vcam; }, get phoneRemote() { return phoneRemote; }, get nowPlaying() { return nowPlaying; }, get btAudio() { return btAudio; }, get phoneDrive() { return phoneDrive; }, get terminal() { return terminal; }, loadRemote, setCamera, loadNowPlaying, loadBtAudio, loadTerminal, connectPhoneDev, cancelPhoneInvite, hub: loadHub,
     get net() { return net; }, get wifi() { return wifi; }, applyNet, joinHotspot, openBluetoothSettings,
@@ -453,7 +456,7 @@ function startPhone(server, pairing) {
   loadBtAudio();
   // Remote off: its page hears so; on, PhoneRemote answers instead.
   pl.on(`t:${P.T.REMOTE_HELLO}`, () => !phoneRemote && pl.current && pl.current.os === P.OS.ANDROID
-    && pl.sendToClient({ t: P.T.REMOTE_STATE, allowed: false, off: true, why: 'Remote is off on this computer: turn it on in TwinDesk’s Remote page there' }));
+    && pl.sendToClient({ t: P.T.REMOTE_STATE, allowed: false, off: true, why: 'Remote is off on this computer: turn it on in DuoDesk’s Remote page there' }));
   loadRemote();
   phoneViews.on('change', pushState);
   viaWifi(phoneViews, 'openScreen', 'phone');
@@ -1189,7 +1192,7 @@ function createMainWindow(tab) {
     y: b.y,
     minWidth: 720,
     minHeight: 480,
-    title: 'TwinDesk',
+    title: 'DuoDesk',
     icon: path.join(__dirname, 'assets', 'icon.png'),
     backgroundColor: nativeTheme.shouldUseDarkColors ? '#2b2b2e' : '#e9e9ee',
     show: false,
@@ -1249,10 +1252,10 @@ function createTray() {
     img.addRepresentation({ scaleFactor: 2, buffer: nativeImage.createFromPath(path.join(__dirname, 'assets', 'tray@2x.png')).toPNG() });
     tray = new Tray(img);
   } catch (e) {
-    console.error('[tray]', e.message); // no tray on this desktop: start TwinDesk again to show the window
+    console.error('[tray]', e.message); // no tray on this desktop: start DuoDesk again to show the window
     return;
   }
-  tray.setToolTip('TwinDesk');
+  tray.setToolTip('DuoDesk');
   tray.on('click', showMain);
   updateTray(buildState());
 }
@@ -1262,7 +1265,7 @@ function createTray() {
 let trayKey = '';
 function updateTray(s) {
   if (!tray) return;
-  tray.setToolTip('TwinDesk: ' + statusLine(s));
+  tray.setToolTip('DuoDesk: ' + statusLine(s));
   const connected = s.link.state === 'connected';
   const name = connected && s.peer ? s.peer.name : '';
   const k = settings.kvm;
@@ -1314,7 +1317,7 @@ function updateTray(s) {
     lookAgain: () => discovery.probe(),
     again: again ? { label: (s.link.busy ? 'Take Over ' : 'Connect to ') + host, click: () => link.connect(true) } : null,
     disconnect: connected ? { label: 'Disconnect ' + name, click: () => link.disconnect() } : null,
-    update: s.updates && s.updates.available ? { label: 'Download TwinDesk ' + s.updates.latest + '…', click: showUpdateWindow } : null,
+    update: s.updates && s.updates.available ? { label: 'Download DuoDesk ' + s.updates.latest + '…', click: showUpdateWindow } : null,
     rezume: rezumeItems(),
     open: showMain,
     log: () => require('../shared/applog.js').open(),

@@ -28,5 +28,13 @@ mac/vendor/adb/
 # The full Android build, copied in at build time (mac/build-app.sh)
 mac/vendor/twindesk-android-full.apk
 .env
+.env.*
+!.env.example
+.netlify/
+test/output/
+test/profiles/
+website/node_modules/
+website/dist/
+website/test/output/
 result
 result-*

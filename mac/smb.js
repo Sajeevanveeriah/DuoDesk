@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // Network drives: mount the PC's share when it offers one, and share
 // one folder of this Mac with the PC (admin setup once via scripts/smb-share.sh).
 // The share password is kept encrypted with Electron safeStorage (Keychain-backed) in settings.
@@ -193,7 +194,7 @@ class Smb extends EventEmitter {
     const pwFile = path.join(os.tmpdir(), `macshare-${crypto.randomBytes(6).toString('hex')}`);
     fs.writeFileSync(pwFile, pw, { mode: 0o600 });
     try {
-      await runScript('smb-share.sh', [folder, pwFile], 'TwinDesk wants to share a folder with the other computer.');
+      await runScript('smb-share.sh', [folder, pwFile], 'DuoDesk wants to share a folder with the other computer.');
       const c = this.cfg;
       c.sharing = true;
       c.folder = folder;
@@ -215,7 +216,7 @@ class Smb extends EventEmitter {
     this.share = { busy: true, error: null, peer: null };
     this.emit('change');
     try {
-      await runScript('smb-unshare.sh', [c.folder], 'TwinDesk wants to stop sharing the folder.');
+      await runScript('smb-unshare.sh', [c.folder], 'DuoDesk wants to stop sharing the folder.');
       this.server.sendToClient({ t: P.T.SMB_REVOKE, share: 'MacShare' });
       c.sharing = false;
       c.secret = '';

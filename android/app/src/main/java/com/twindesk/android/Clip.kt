@@ -100,7 +100,7 @@ class Clip(core: Core) : Feature(core) {
             if (!mime.startsWith("image/") || uri.authority == "${core.ctx.packageName}.files" || !canSendPictures) return false
             pics.execute {
                 runCatching { toPng(core.ctx.contentResolver, uri, mime, -1) }
-                    .onFailure { Log.w("TwinDesk", "clipboard picture: ${it.message}") }
+                    .onFailure { Log.w("DuoDesk", "clipboard picture: ${it.message}") }
                     .getOrNull()?.let { sendPicture(it, false) }
             }
             return true
@@ -151,7 +151,7 @@ class Clip(core: Core) : Feature(core) {
     fun receiveText(text: String) {
         lastIn = text
         remember(Item("in", text))
-        cm.setPrimaryClip(ClipData.newPlainText("TwinDesk", text))
+        cm.setPrimaryClip(ClipData.newPlainText("DuoDesk", text))
         core.changed()
     }
 
@@ -159,7 +159,7 @@ class Clip(core: Core) : Feature(core) {
     fun copyAgain(item: Item) {
         val uri = item.picture
         if (uri != null) runCatching { cm.setPrimaryClip(ClipData.newUri(core.ctx.contentResolver, "Picture", uri)) }
-        else cm.setPrimaryClip(ClipData.newPlainText("TwinDesk", item.text))
+        else cm.setPrimaryClip(ClipData.newPlainText("DuoDesk", item.text))
     }
 
     private fun remember(item: Item) {
@@ -226,12 +226,12 @@ class Clip(core: Core) : Feature(core) {
             val uri = FileProvider.getUriForFile(core.ctx, "${core.ctx.packageName}.files", file)
             main.post {
                 runCatching { cm.setPrimaryClip(ClipData.newUri(core.ctx.contentResolver, if (shot) "Screenshot" else "Picture", uri)) }
-                    .onFailure { Log.w("TwinDesk", "picture from the computer: ${it.message}") }
+                    .onFailure { Log.w("DuoDesk", "picture from the computer: ${it.message}") }
             }
             val size = if (w > 0 && h > 0) "$w × $h" else "${png.size / 1024} KB"
             remember(Item("in", "${if (shot) "Screenshot" else "Picture"} · $size", uri))
         } catch (e: Exception) {
-            Log.w("TwinDesk", "picture from the computer: ${e.message}")
+            Log.w("DuoDesk", "picture from the computer: ${e.message}")
         }
     }
 

@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // ReZume here (shared/rezume.js): what is in use in the app in front. One JavaScript for
 // Automation run (osascript) a look: the front app from NSWorkspace (nothing to allow); a browser's
 // tab from the browser itself (Safari, Chrome, Edge, Brave, Vivaldi, Opera, Arc: macOS asks once per
@@ -64,11 +65,11 @@ function create({ cfg }) {
       const app = r.id;
       const appName = r.name;
       if (r.browser || /firefox|librewolf|zen/i.test(app)) {
-        if (refused(r.err)) return { why: 'Let TwinDesk control ' + appName + ' to offer its tabs: System Settings › Privacy & Security › Automation › TwinDesk' };
+        if (refused(r.err)) return { why: 'Let DuoDesk control ' + appName + ' to offer its tabs: System Settings › Privacy & Security › Automation › DuoDesk' };
         const url = r.url || (tabs.tabOf(app, r.title || '') || {}).url;
         return url ? { kind: 'web', url, title: tabs.splitTitle(r.title || '').page || r.title || url, app, appName } : null;
       }
-      if (refused(r.serr)) return { why: 'Let TwinDesk control System Events to offer documents: System Settings › Privacy & Security › Automation › TwinDesk' };
+      if (refused(r.serr)) return { why: 'Let DuoDesk control System Events to offer documents: System Settings › Privacy & Security › Automation › DuoDesk' };
       if (typeof r.doc === 'string' && r.doc.startsWith('file://')) {
         let p = '';
         try { p = decodeURIComponent(new URL(r.doc).pathname); } catch (_) { p = ''; }

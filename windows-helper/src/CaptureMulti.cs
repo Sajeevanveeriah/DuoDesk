@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith, Erdoğan Yeşil. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // Capture with several watched sides, for Multi-device (docs/multi-device.md, docs/mesh.md "Shared
 // layout"): built into macshare-winhelper-multi.exe only (build.cmd, /define:MULTI), which the mesh app
 // starts (windows/mesh/helper.js). Each side of this PC can lead to another device: the edge push is
@@ -70,7 +71,7 @@ namespace MacShare
                 Native.SetCursorPos(parked.X, parked.Y);
             }
             pushes.Clear();
-            lastCross = DateTime.UtcNow; arrivalSide = null;
+            lastCross = DateTime.UtcNow; crossTick = edgeClock.ElapsedMilliseconds; arrivalSide = null;
         }
 
         // side == null: put the pointer back where capture began.
@@ -116,12 +117,11 @@ namespace MacShare
             Native.POINT p;
             Native.GetCursorPos(out p);
             if (retArmed) { FeedReturn(p.x, p.y, dx, dy); return; }
-            if (!DriveOther || Sides.Count == 0 || AnyButtonDown()) { pushes.Clear(); return; } // Rule 6: no crossing mid-drag
+            if (!DriveOther || Sides.Count == 0) { pushes.Clear(); return; } // Rule 6: no crossing mid-drag
             foreach (string side in Sides)
             {
                 double outward = Screens.Outward(side, dx, dy);
-                if (!MayCross(side, outward)) { pushes.Remove(side); continue; }
-                if (outward <= 0 || !Screens.OnOuterEdge(p.x, p.y, side) || !InZone(EdgeZones, p.x, p.y, side)) { pushes.Remove(side); continue; }
+                if (!MayCross(side, outward, p.x, p.y, false)) { pushes.Remove(side); continue; }
                 DateTime now = DateTime.UtcNow;
                 EdgePush e;
                 if (!pushes.TryGetValue(side, out e)) { e = new EdgePush(); pushes[side] = e; }
@@ -146,13 +146,12 @@ namespace MacShare
         // the resistance wins and the watch is off until main arms it again.
         public void FeedReturn(int x, int y, double dx, double dy)
         {
-            if (!retArmed || HoldReturn) return;
+            if (!retArmed) return;
             DateTime now = DateTime.UtcNow;
             foreach (string side in retSides)
             {
                 double outward = Screens.Outward(side, dx, dy);
-                if (!MayCross(side, outward)) { retPushes.Remove(side); continue; }
-                if (outward <= 0 || !Screens.OnOuterEdge(x, y, side) || !InZone(ReturnZones, x, y, side)) { retPushes.Remove(side); continue; }
+                if (!MayCross(side, outward, x, y, true)) { retPushes.Remove(side); continue; }
                 EdgePush e;
                 if (!retPushes.TryGetValue(side, out e)) { e = new EdgePush(); retPushes[side] = e; }
                 if ((now - e.Last).TotalMilliseconds > 300) e.Amount = 0;
@@ -162,7 +161,7 @@ namespace MacShare
                 if (e.Amount < retResistance || !Dwelt(retResistance, e.Since, now)) continue;
                 retArmed = false;
                 retPushes.Clear();
-                lastCross = now;
+                lastCross = now; crossTick = edgeClock.ElapsedMilliseconds;
                 if (Flash != null) Flash.Play(new Point(x, y), side, true); // leaving this PC for another device
                 Dictionary<string, object> d = Ev("return");
                 d["offset"] = Math.Round(Screens.Offset(x, y, side), 4);

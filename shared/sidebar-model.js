@@ -1,3 +1,4 @@
+// DuoDesk modifications: 2026-11-01; original notices retained.
 // TwinDesk — Copyright (C) 2026 inukaasith, Erdoğan Yeşil. GPL-3.0, see LICENSE.
 // The main window's left sidebar as data (docs/mesh.md): every device the app knows (computers and
 // phones) as a tile, and which sections (Calls, Files, Terminal, ...) belong to which kind of
@@ -12,7 +13,7 @@
   const COMPUTER_ONLY = ['mac-pc', 'receive', 'apps', 'terminal'];
   // Global sections: the same whichever device is selected.
   // Overview is the selected device's own page (shared/ui-device.js); Connection is everyone's.
-  const GLOBAL = ['connection', 'general', 'about', 'clipboard', 'notifications', 'setup'];
+  const GLOBAL = ['desk', 'tips', 'feedback', 'connection', 'general', 'about', 'clipboard', 'notifications', 'setup'];
   // Where a device's own sections begin (the first one the app has).
   const FIRST = { phone: ['overview', 'phone', 'calls'], computer: ['overview', 'mac-pc', 'receive', 'pc-mac', 'share', 'cursor', 'files'], none: ['connection', 'overview'] };
 

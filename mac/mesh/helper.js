@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith, Erdoğan Yeşil. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // ../helper.js with Multi-device's helper: macshare-helper-multi, the same sources built with -D MULTI
 // (several watched edges, the #if MULTI parts of mac-helper's Capture.swift). Where it isn't built (an
 // older .build/), the one-to-one helper starts instead and watches the first edge the mesh names (kvm.js
@@ -13,7 +14,7 @@ const { Helper } = require('../helper');
 
 const RELEASE = path.join(__dirname, '..', '..', 'mac-helper', '.build', 'release');
 const MULTI = path.join(RELEASE, 'macshare-helper-multi');
-const BIN = fs.existsSync(MULTI) ? MULTI : path.join(RELEASE, 'macshare-helper');
+const BIN = MULTI; // Never silently run a single-edge helper in multi-device mode.
 
 class MeshHelper extends Helper {
   // ../helper.js's start() with this BIN.
@@ -24,6 +25,7 @@ class MeshHelper extends Helper {
       return false;
     }
     const proc = spawn(BIN, [], { stdio: ['pipe', 'pipe', 'pipe', 'pipe'] });
+    proc.once('spawn', () => console.log(`[startup] helper=${BIN} pid=${proc.pid}`));
     proc.stdio[3].on('data', (buf) => this.emit('pcm', buf));
     proc.stdio[3].on('error', () => {});
     this.proc = proc;

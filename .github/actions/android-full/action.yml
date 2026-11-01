@@ -1,61 +1,37 @@
-# The full Android build (notification access) that the computers install over the downloaded app
-# through wireless debugging. It has to be signed with the same key as that app, so:
-#   - with the ANDROID_KEYSTORE secret (base64 of that keystore) it's built here;
-#   - without it, it's taken from the newest release that carries TwinDesk-<version>-full.apk
-#     (built and signed on the developer's machine), drafts included.
-# Either way it lands in android/dist, where the installers pick it up.
-name: Android full build
+name: Prepare Android signing
+description: Restore a user-supplied durable key for a release; never silently publish an ephemeral key.
 inputs:
+  release:
+    default: 'false'
   keystore:
-    required: false
+    default: ''
+  store-password:
+    default: ''
+  key-alias:
+    default: ''
+  key-password:
     default: ''
 runs:
   using: composite
   steps:
-    - name: Signing key
-      id: key
+    - name: Validate and restore signing identity
       shell: bash
       env:
+        RELEASE: ${{ inputs.release }}
         KEYSTORE: ${{ inputs.keystore }}
+        STORE_PASSWORD: ${{ inputs.store-password }}
+        KEY_ALIAS: ${{ inputs.key-alias }}
+        KEY_PASSWORD: ${{ inputs.key-password }}
       run: |
         if [ -z "$KEYSTORE" ]; then
-          echo "have=false" >> "$GITHUB_OUTPUT"
-        else
-          mkdir -p ~/.android
-          echo "$KEYSTORE" | base64 -d > ~/.android/debug.keystore
-          echo "have=true" >> "$GITHUB_OUTPUT"
-        fi
-
-    - if: steps.key.outputs.have == 'true'
-      uses: actions/setup-java@v4
-      with:
-        distribution: temurin
-        java-version: 21
-
-    - if: steps.key.outputs.have == 'true'
-      name: Build the full APK into android/dist
-      shell: bash
-      working-directory: android
-      run: |
-        ./gradlew --no-daemon assembleFullRelease
-        mkdir -p dist
-        cp app/build/outputs/apk/full/release/app-full-release.apk "dist/TwinDesk-$(grep -m1 versionName app/build.gradle.kts | sed 's/.*"\(.*\)".*/\1/')-full.apk"
-        ls -la dist
-
-    - if: steps.key.outputs.have != 'true'
-      name: Take the full APK from a release
-      shell: bash
-      env:
-        GH_TOKEN: ${{ github.token }}
-      run: |
-        v=$(grep -m1 versionName android/app/build.gradle.kts | sed 's/.*"\(.*\)".*/\1/')
-        apk="TwinDesk-$v-full.apk"
-        for tag in $(gh release list --repo "$GITHUB_REPOSITORY" --limit 30 --json tagName -q '.[].tagName'); do
-          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json assets -q '.assets[].name' | grep -qx "$apk"; then
-            gh release download "$tag" --repo "$GITHUB_REPOSITORY" -p "$apk" -D android/dist --clobber
-            echo "$apk from release $tag"
-            ls -la android/dist
-            exit 0
+          if [ "$RELEASE" = 'true' ]; then
+            echo '::error::Release requires ANDROID_KEYSTORE and its password/alias secrets. No release will be published.'
+            exit 1
           fi
-        done
-        echo "::warning::No release carries $apk and there's no ANDROID_KEYSTORE secret: building without the full Android app"
+          echo '::warning::Validation build uses an ephemeral debug signature; it is not an upgrade-compatible release.'
+          exit 0
+        fi
+        test -n "$STORE_PASSWORD" && test -n "$KEY_ALIAS" && test -n "$KEY_PASSWORD" || { echo '::error::Incomplete Android signing configuration'; exit 1; }
+        umask 077
+        printf '%s' "$KEYSTORE" | base64 --decode > "$RUNNER_TEMP/duodesk-release.jks"
+        echo "ANDROID_RELEASE_KEYSTORE=$RUNNER_TEMP/duodesk-release.jks" >> "$GITHUB_ENV"

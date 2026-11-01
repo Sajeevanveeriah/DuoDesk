@@ -1,3 +1,4 @@
+// DuoDesk modifications: 2026-11-01; original notices retained.
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
 // The `Host twindesk` entry in ~/.ssh/config, so `ssh twindesk` opens a shell on the paired
 // computer on every OS. Only our marked block is touched; the rest of the file stays byte for byte,
@@ -11,7 +12,7 @@ const path = require('path');
 const ALIAS = 'twindesk';
 const SSH_DIR = path.join(os.homedir(), '.ssh');
 const CONFIG = path.join(SSH_DIR, 'config');
-const BEGIN = '# >>> twindesk (managed by TwinDesk, do not edit)';
+const BEGIN = '# >>> twindesk (managed by DuoDesk, do not edit)';
 const END = '# <<< twindesk';
 const OLD = [['# >>> macshare', '# <<< macshare']];
 

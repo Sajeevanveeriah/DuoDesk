@@ -1,4 +1,5 @@
 /* TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE. */
+/* DuoDesk modifications, 2026. GPL-3.0. */
 /* Same look as the Mac app (mac/control.css, System Settings style) so both windows match;
    Linux: copied from windows/app.css with a Linux font stack. */
 :root {
@@ -32,7 +33,7 @@ button, input, select { font: inherit; color: inherit; }
 /* ---------- sidebar ---------- */
 #sidebar { width: 220px; flex: none; padding: 16px 10px 12px; overflow-y: auto; border-right: 1px solid var(--line); }
 .identity { display: flex; align-items: center; gap: 14px; padding: 6px 8px 20px 4px; }
-.app-mark { /* the TwinDesk icon (shared/icon/teindesk-dark.png) */
+.app-mark { /* the DuoDesk icon (shared/icon/teindesk-dark.png) */
   width: 60px; height: 60px; flex: none;
   /* the whole icon, rendered from the 1024 px master at the exact size for each display scale */
   background: image-set(url(assets/sidebar-icon@1x.png) 1x, url(assets/sidebar-icon@2x.png) 2x,

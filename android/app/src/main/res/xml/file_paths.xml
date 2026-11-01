@@ -2,4 +2,5 @@
 <paths>
     <!-- Files copied on the computer, waiting on the clipboard (FileClip). -->
     <cache-path name="clip" path="clip/" />
+    <files-path name="recovery" path="pcshare-recovery/" />
 </paths>

@@ -1,6 +1,7 @@
 // TwinDesk — Copyright (C) 2026 inukaasith, Erdoğan Yeşil. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // Multi-device tab with it on (docs/multi-device.md): what only several devices need, in one place.
-// Turn off (TwinDesk restarts one to one), where the devices sit (the shared layout's grid, docs/mesh.md
+// Turn off (DuoDesk restarts one to one), where the devices sit (the shared layout's grid, docs/mesh.md
 // "Shared layout"), and Join every device automatically (docs/mesh.md "Joining everyone").
 'use strict';
 
@@ -142,7 +143,7 @@ UI.tab({
 
     body.append(
       UI.card('Mesh mode', [
-        UI.row('Use several devices at once', 'On, in beta. TwinDesk restarts when you turn it on or off', [turnOff]),
+        UI.row('Use several devices at once', 'On, in beta. DuoDesk restarts when you turn it on or off', [turnOff]),
       ]),
       UI.card('Layout', [gridEl, reachNote, layoutHint], { cls: 'keep-on' }),
       UI.card('Joining', [joinRow]),

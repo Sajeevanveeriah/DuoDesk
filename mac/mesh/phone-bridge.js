@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith, Erdoğan Yeşil. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // Everything the Mac does to the phone through wireless debugging (adb.js + scrcpy.js), while a
 // phone is the peer:
 //   setup   find the phone's adb (mDNS), pair once with the code from Developer options, connect,
@@ -32,7 +33,7 @@ const TCPIP_PORT = 5555;
 // macOS's Local Network privacy: adb (started by TwinDesk) may not open connections on the LAN.
 // The phone answers ping, but every connect and pairing attempt fails with EHOSTUNREACH.
 const NO_ROUTE = /no route to host/i;
-const LAN_BLOCKED = 'macOS is blocking TwinDesk from the local network: System Settings › Privacy & Security › Local Network › TwinDesk on, then Try Again.';
+const LAN_BLOCKED = 'macOS is blocking DuoDesk from the local network: System Settings › Privacy & Security › Local Network › DuoDesk on, then Try Again.';
 const INPUT_BLOCKED = 'Xiaomi blocks touch and keys: on the phone, Developer options › USB debugging (Security settings)';
 const BUTTON = { 0: 1, 1: 2, 2: 4, 3: 8, 4: 16 }; // our button numbers -> MotionEvent.BUTTON_*
 const isPhone = (ctx) => !!ctx && ctx.os === P.OS.ANDROID;
@@ -174,7 +175,8 @@ class PhoneBridge extends EventEmitter {
   _tellPhone() {
     if (!isPhone(this.server.current)) return;
     const viewed = !!(this.views && this.views.list().length);
-    this.server.sendToClient({ t: T.ADB_BRIDGE, state: this.state, message: this.message, canPair: this.canPair, inputBlocked: this.inputBlocked, viewed });
+    const camera = this.views ? this.views.cameraState() : null;
+    this.server.sendToClient({ t: T.ADB_BRIDGE, state: this.state, message: this.message, canPair: this.canPair, inputBlocked: this.inputBlocked, viewed, camera });
   }
 
   // MIUI and HyperOS refuse adb's touches and keys (INJECT_EVENTS) until Developer options ›
@@ -478,7 +480,7 @@ class PhoneBridge extends EventEmitter {
     const apk = fullApk();
     const c = this.server.current;
     if (!this.serial || !isPhone(c)) return this._install('failed', 'Set up wireless debugging first.');
-    if (!apk) return this._install('failed', 'This build of TwinDesk doesn’t carry the Android app.');
+    if (!apk) return this._install('failed', 'This build of DuoDesk doesn’t carry the Android app.');
     const id = c.deviceId;
     const serial = this.serial;
     this._install('installing', `Installing on ${c.name}…`);
@@ -587,7 +589,7 @@ class PhoneBridge extends EventEmitter {
       setImmediate(() => this._toKvm({ t: T.KVM_REFUSE, route: m.route, why: P.REFUSE.NOT_ALLOWED }));
       if (d && (this.viaPhone || (this.state !== 'ready' && this.inputMode !== 'adb'))) { // no wireless debugging (Bluetooth), or chosen: the phone does it itself, once allowed
         this.server.sendToClient({ t: T.PHONE_INPUT_ASK });
-        this.emit('popup', 'home', 'On the phone, allow TwinDesk to control it (the notification there)');
+        this.emit('popup', 'home', 'On the phone, allow DuoDesk to control it (the notification there)');
       } else {
         this.emit('popup', 'home', this.state === 'ready' ? 'The phone isn’t ready yet' : 'Set up wireless debugging on the Phone page first');
       }
@@ -726,12 +728,19 @@ class PhoneBridge extends EventEmitter {
   sessionOpts(kind, extra = {}) {
     const ph = this.getSettings().phone || {};
     const base = { video: true, control: true, maxFps: 60, videoBitRate: (ph.bitrateMbps || 8) * 1000000 };
+    if (kind === 'camera') return { ...base, audio: false, control: false, stayAwake: true, flex: false, ...extra };
     if (kind === 'screen') return { ...base, audio: !!ph.sound, maxSize: ph.maxSize || 0, stayAwake: true, ...extra };
     return { ...base, audio: false, flex: true, ...extra };
   }
 
   setupView() {
     return { state: this.state, message: this.message, pairing: !!this.pairing };
+  }
+
+  async listCameras() {
+    if (!this.serial || this.state !== 'ready') return [];
+    try { return await Session.listCameras(this.adb, this.serial); }
+    catch (error) { console.error('[phone-bridge] camera list:', error.message); return []; }
   }
 }
 

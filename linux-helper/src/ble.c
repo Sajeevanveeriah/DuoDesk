@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // Bluetooth LE (shared/protocol.js P.BLE) through BlueZ on D-Bus, for a device that isn't on this
 // computer's network; the same commands and events as windows-helper's Ble.cs:
 //   host:   a GATT application that advertises the TwinDesk service. A guest reads INFO, says
@@ -379,7 +380,7 @@ static const char *att_discover(Att *a, const char *svc, guint16 val[C_N], guint
     g_bytes_unref(r);
     at = last && last < 0xFFFF ? (guint16)(last + 1) : 0;
   }
-  if (!s0) return "no TwinDesk service";
+  if (!s0) return "no DuoDesk service";
   guint16 decl[C_N + 1] = { 0 };
   for (guint16 at = s0; at && at <= s1;) { // characteristics (Read By Type, 0x2803)
     guint8 q[7] = { 0x08 };

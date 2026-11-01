@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // macshare-linuxhelper: shared declarations. JSON lines on stdin/stdout, the same commands and
 // events as windows-helper.
 #ifndef MACSHARE_HELPER_H
@@ -50,6 +51,8 @@ const char *side_name(int side);
 void screens_refresh(void);
 int screens_contains(int x, int y);
 int screens_on_outer_edge(int x, int y, int side);
+int screens_at_edge(int x, int y, int side);
+void screens_reject(const char *reason, int x, int y, int side);
 double screens_outward(int side, double dx, double dy);
 double screens_offset(int x, int y, int side);
 void screens_edge_point(int side, double offset, int *x, int *y);
@@ -76,6 +79,7 @@ void capture_arm_return_list(int on, const char *list, int fallback, double resi
 void capture_feed_return(int x, int y, double dx, double dy);
 void capture_arrived(int side);
 void capture_return_zones(const char *text);
+void capture_return_zone_map(const JObj *map);
 int capture_return_stops(int *out); // out: room for 4
 void capture_xevent(XEvent *e);
 int capture_active(void);
@@ -108,6 +112,7 @@ void inject_apply(const JObj *ev);
 void inject_move_to(int x, int y);
 void inject_release_all(void);
 void inject_button(int b, int down);
+int inject_buttons_held(void);
 
 // ---- wins.c: top-level windows for Apps (X11) ----
 void wins_list(double id);
@@ -128,7 +133,9 @@ int wl_capture_begin(int mouse, int keys);
 void wl_capture_stop(int side, double offset, int hasSide);
 void wl_arrived(int side);
 void wl_return_zones(const char *text);
+void wl_return_zone_map(const JObj *map);
 void wl_arm_return(int on, int side, double resistance);
+void wl_arm_return_list(int on, const char *list, int fallback, double resistance);
 void wl_inject(const JObj *ev);
 void wl_move_to(int x, int y);
 void wl_button(int b, int down);

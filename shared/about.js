@@ -1,3 +1,4 @@
+// DuoDesk modifications: 2026-11-01; original notices retained.
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
 // The About page's facts for all three apps: this app (version, Electron, Chrome, Node) and the
 // computer it runs on (OS, CPU, memory). Read once at start; nothing here changes while running.
@@ -10,12 +11,14 @@ const fs = require('fs');
 
 const LINKS = {
   portfolio: 'https://inukaasith.vercel.app',
-  github: 'https://github.com/InukaAsith/TwinDesk',
-  releases: 'https://github.com/InukaAsith/TwinDesk/releases',
-  licence: 'https://github.com/InukaAsith/TwinDesk/blob/main/LICENSE',
+  github: 'https://github.com/Sajeevanveeriah/DuoDesk',
+  upstream: 'https://github.com/InukaAsith/TwinDesk',
+  feedback: 'https://github.com/Sajeevanveeriah/DuoDesk/issues/new',
+  releases: 'https://github.com/Sajeevanveeriah/DuoDesk/releases',
+  licence: 'https://github.com/Sajeevanveeriah/DuoDesk/blob/main/LICENSE',
 };
 
-const NAME = { darwin: 'TwinDesk for macOS', win32: 'TwinDesk for Windows', linux: 'TwinDesk for Linux' };
+const NAME = { darwin: 'DuoDesk for macOS', win32: 'DuoDesk for Windows', linux: 'DuoDesk for Linux' };
 const THANKS = { darwin: 'DeskPad (virtual display header, MIT)' };
 const ARCH = { x64: '64-bit Intel/AMD (x64)', arm64: 'ARM 64-bit (arm64)', ia32: '32-bit (x86)' };
 
@@ -47,7 +50,7 @@ function aboutInfo(app) {
   const v = process.versions;
   return {
     app: {
-      name: NAME[process.platform] || 'TwinDesk',
+      name: NAME[process.platform] || 'DuoDesk',
       thanks: THANKS[process.platform] || '',
       version: app.getVersion(),
       electron: v.electron || '',

@@ -1,3 +1,4 @@
+// DuoDesk modifications: 2026-11-01; original notices retained.
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
 // Files pasted into an app (mac/fclip.js, linux/fclip.js; Windows' helper does its own): the paste
 // shortcut was pressed with an app in front, not the file manager, so the files arrive in a folder
@@ -14,7 +15,7 @@ const SETTLE_MS = 500; // after the files land, before the paste keys
 
 // A new folder for one paste; earlier ones go after a day.
 function pasteDir() {
-  const root = path.join(os.tmpdir(), 'TwinDesk Paste');
+  const root = path.join(os.tmpdir(), 'DuoDesk Paste');
   try {
     for (const d of fs.readdirSync(root)) {
       const p = path.join(root, d);

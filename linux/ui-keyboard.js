@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // Keyboard tab: typing follows the pointer. The Hotkey card (double-tap = mouse and keyboard back
 // here; keyboard-only switching), then two direction cards; the directions are the
 // same switches as on the Cursor tab. Behaviour: kvm.js and windows-helper.
@@ -44,7 +45,7 @@ UI.tab({
       switchSw.disable(!!s.kvm.mouse);
       switchRow.setHint(s.kvm.mouse ? 'Only when Cursor is off' : 'Double-tap to type on ' + p.the + ' and back');
       otherHotkey.label.textContent = 'Hotkey on ' + p.the;
-      otherHotkey.setHint('Set in TwinDesk on ' + p.the);
+      otherHotkey.setHint('Set in DuoDesk on ' + p.the);
       // Ctrl/Cmd swapping only between a Mac and a PC.
       swapRow.hidden = p.os !== 'mac';
       shortcutsRow.hidden = p.os !== 'mac';

@@ -1,5 +1,6 @@
 #!/bin/sh
 # TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
+# DuoDesk modifications, 2026. GPL-3.0.
 # Builds dist/TwinDesk.app (npm run dist [x64|arm64]). The app code keeps its dev layout inside
 # Contents/Resources/app (mac/, shared/, mac-helper/.build/release/) so every `../` path still works;
 # no asar, because mac-helper and scripts/*.sh are run straight from there.
@@ -17,7 +18,7 @@ case "$ARCH" in
 esac
 EV=$(node -p "require('./node_modules/electron/package.json').version")
 
-../mac-helper/build.sh "$ARCH"
+sh ../mac-helper/build.sh "$ARCH"
 
 # TwinDesk for Android with notification access, which the Mac installs on a phone over wireless
 # debugging (phone-bridge.js): the newest full build from android/dist, if one was built.
@@ -29,12 +30,13 @@ sh scripts/fetch-adb.sh
 
 rm -rf "$STAGE" && mkdir -p "$STAGE/mac" "$STAGE/shared" "$STAGE/mac-helper/.build/release" "$STAGE/node_modules"
 rsync -a --exclude node_modules --exclude dist --exclude dev --exclude test --exclude dmg --exclude build-app.sh --exclude build-dmg.sh --exclude scripts/signing-identity.sh --exclude entitlements.plist ./ "$STAGE/mac/"
-cp "$ROOT"/shared/*.js "$ROOT"/shared/*.css "$ROOT"/shared/*.html "$STAGE/shared/"
+rsync -a --exclude test "$ROOT/shared/" "$STAGE/shared/"
 cp "$ROOT"/mac-helper/.build/release/macshare-helper "$ROOT"/mac-helper/.build/release/macshare-helper-multi "$ROOT"/mac-helper/.build/release/macshare-dockstub "$ROOT"/mac-helper/.build/release/macshare-calls "$STAGE/mac-helper/.build/release/"
 cp -R node_modules/ws "$STAGE/node_modules/"
 mkdir -p "$STAGE/mac/node_modules" && cp -R node_modules/ws "$STAGE/mac/node_modules/"
 cp "$ROOT/LICENSE" "$STAGE/"
 cp "$ROOT/THIRD_PARTY_NOTICES" "$STAGE/"
+cp -R "$ROOT/licenses" "$STAGE/"
 node -e "
 const p = require('./package.json');
 require('fs').writeFileSync('$STAGE/package.json', JSON.stringify({
@@ -43,37 +45,37 @@ require('fs').writeFileSync('$STAGE/package.json', JSON.stringify({
 }, null, 2));"
 
 # App icon: the TwinDesk dark icon (shared/icon, drawn by make-icon.py).
-cp "$ROOT/shared/icon/teindesk-dark.icns" dist/TwinDesk.icns
+cp "$ROOT/shared/icon/duodesk.icns" dist/DuoDesk.icns
 
 cat > dist/extra.plist <<'EOF'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
-  <key>NSLocalNetworkUsageDescription</key><string>TwinDesk finds and connects to your PC on the local network.</string>
-  <key>NSMicrophoneUsageDescription</key><string>TwinDesk sends sound between your Mac and your PC.</string>
-  <key>NSAudioCaptureUsageDescription</key><string>TwinDesk sends your Mac's sound to your PC.</string>
-  <key>NSCameraUsageDescription</key><string>TwinDesk shows this Mac's camera on your other computer when you share it there.</string>
-  <key>NSAppleEventsUsageDescription</key><string>TwinDesk asks Finder which folder is in front, to copy and paste files there.</string>
-  <key>NSBluetoothAlwaysUsageDescription</key><string>TwinDesk connects to your phone and computers over Bluetooth when they aren't on your network.</string>
-  <key>NSLocationUsageDescription</key><string>macOS shows Wi-Fi networks only to apps with Location. TwinDesk joins your phone's or PC's Wi-Fi to send files when they aren't on your network.</string>
-  <key>NSLocationWhenInUseUsageDescription</key><string>macOS shows Wi-Fi networks only to apps with Location. TwinDesk joins your phone's or PC's Wi-Fi to send files when they aren't on your network.</string>
-  <key>NSLocationAlwaysAndWhenInUseUsageDescription</key><string>macOS shows Wi-Fi networks only to apps with Location. TwinDesk joins your phone's or PC's Wi-Fi to send files when they aren't on your network.</string>
-  <key>CFBundleURLTypes</key><array><dict><key>CFBundleURLName</key><string>TwinDesk</string><key>CFBundleURLSchemes</key><array><string>macshare</string></array></dict></array>
+  <key>NSLocalNetworkUsageDescription</key><string>DuoDesk finds and connects to your PC on the local network.</string>
+  <key>NSMicrophoneUsageDescription</key><string>DuoDesk sends sound between your Mac and your PC.</string>
+  <key>NSAudioCaptureUsageDescription</key><string>DuoDesk sends your Mac's sound to your PC.</string>
+  <key>NSCameraUsageDescription</key><string>DuoDesk shows this Mac's camera on your other computer when you share it there.</string>
+  <key>NSAppleEventsUsageDescription</key><string>DuoDesk asks Finder which folder is in front, to copy and paste files there.</string>
+  <key>NSBluetoothAlwaysUsageDescription</key><string>DuoDesk connects to your phone and computers over Bluetooth when they aren't on your network.</string>
+  <key>NSLocationUsageDescription</key><string>macOS shows Wi-Fi networks only to apps with Location. DuoDesk joins your phone's or PC's Wi-Fi to send files when they aren't on your network.</string>
+  <key>NSLocationWhenInUseUsageDescription</key><string>macOS shows Wi-Fi networks only to apps with Location. DuoDesk joins your phone's or PC's Wi-Fi to send files when they aren't on your network.</string>
+  <key>NSLocationAlwaysAndWhenInUseUsageDescription</key><string>macOS shows Wi-Fi networks only to apps with Location. DuoDesk joins your phone's or PC's Wi-Fi to send files when they aren't on your network.</string>
+  <key>CFBundleURLTypes</key><array><dict><key>CFBundleURLName</key><string>DuoDesk</string><key>CFBundleURLSchemes</key><array><string>macshare</string></array></dict></array>
   <key>LSApplicationCategoryType</key><string>public.app-category.utilities</string>
   <key>NSHumanReadableCopyright</key><string>Copyright (C) 2026 inukaasith. GPL-3.0.</string>
 </dict></plist>
 EOF
 
-./node_modules/.bin/electron-packager "$STAGE" TwinDesk \
+./node_modules/.bin/electron-packager "$STAGE" DuoDesk \
   --platform=darwin --arch="$ARCH" --electron-version="$EV" \
   --app-bundle-id=org.macshare.mac --app-version="$(node -p "require('./package.json').version")" \
-  --icon=dist/TwinDesk.icns --extend-info=dist/extra.plist \
+  --icon=dist/DuoDesk.icns --extend-info=dist/extra.plist \
   --no-prune --asar=false --out=dist --overwrite --quiet
 
-APP="dist/TwinDesk-darwin-$ARCH/TwinDesk.app"
-rm -rf dist/TwinDesk.app && mv "$APP" dist/ && rm -rf "dist/TwinDesk-darwin-$ARCH" "$STAGE" dist/extra.plist
+APP="dist/DuoDesk-darwin-$ARCH/DuoDesk.app"
+rm -rf dist/DuoDesk.app && mv "$APP" dist/ && rm -rf "dist/DuoDesk-darwin-$ARCH" "$STAGE" dist/extra.plist
 # The Share menu extension (mac-helper/Sources/macshare-share), sandboxed as macOS requires.
-APPEX=dist/TwinDesk.app/Contents/PlugIns/MacShareShare.appex
+APPEX=dist/DuoDesk.app/Contents/PlugIns/MacShareShare.appex
 VER="$(node -p "require('./package.json').version")"
 mkdir -p "$APPEX/Contents/MacOS"
 cp "$ROOT/mac-helper/.build/release/macshare-share" "$APPEX/Contents/MacOS/MacShareShare"
@@ -82,8 +84,8 @@ cat > "$APPEX/Contents/Info.plist" <<PLIST
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
   <key>CFBundleIdentifier</key><string>org.macshare.mac.share</string>
-  <key>CFBundleName</key><string>TwinDesk</string>
-  <key>CFBundleDisplayName</key><string>TwinDesk</string>
+  <key>CFBundleName</key><string>DuoDesk</string>
+  <key>CFBundleDisplayName</key><string>DuoDesk</string>
   <key>CFBundleExecutable</key><string>MacShareShare</string>
   <key>CFBundlePackageType</key><string>XPC!</string>
   <key>CFBundleShortVersionString</key><string>$VER</string>
@@ -118,22 +120,22 @@ PLIST
 # in the app, and the Camera tab says the virtual camera needs a release build.
 # twindesk-vcam is in every build: it also feeds OBS Virtual Camera (OBS's own Camera Extension).
 TEAM=${MAC_TEAM_ID:-$APPLE_TEAM_ID}
-cp "$ROOT/mac-helper/.build/release/twindesk-vcam" dist/TwinDesk.app/Contents/MacOS/twindesk-vcam
-SYSEXT=dist/TwinDesk.app/Contents/Library/SystemExtensions/org.macshare.mac.camera.systemextension
+cp "$ROOT/mac-helper/.build/release/twindesk-vcam" dist/DuoDesk.app/Contents/MacOS/twindesk-vcam
+SYSEXT=dist/DuoDesk.app/Contents/Library/SystemExtensions/org.macshare.mac.camera.systemextension
 CAMERA=""
 if [ -n "$MAC_IDENTITY" ] && [ -n "$TEAM" ] && [ -f "$MAC_APP_PROFILE" ] && [ -f "$MAC_CAMERA_PROFILE" ]; then
   CAMERA=1
   mkdir -p "$SYSEXT/Contents/MacOS"
   cp "$ROOT/mac-helper/.build/release/twindesk-camera" "$SYSEXT/Contents/MacOS/org.macshare.mac.camera"
   cp "$MAC_CAMERA_PROFILE" "$SYSEXT/Contents/embedded.provisionprofile"
-  cp "$MAC_APP_PROFILE" dist/TwinDesk.app/Contents/embedded.provisionprofile
+  cp "$MAC_APP_PROFILE" dist/DuoDesk.app/Contents/embedded.provisionprofile
   cat > "$SYSEXT/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
   <key>CFBundleIdentifier</key><string>org.macshare.mac.camera</string>
-  <key>CFBundleName</key><string>TwinDesk Camera</string>
-  <key>CFBundleDisplayName</key><string>TwinDesk Camera</string>
+  <key>CFBundleName</key><string>DuoDesk Camera</string>
+  <key>CFBundleDisplayName</key><string>DuoDesk Camera</string>
   <key>CFBundleExecutable</key><string>org.macshare.mac.camera</string>
   <key>CFBundlePackageType</key><string>SYSX</string>
   <key>CFBundleShortVersionString</key><string>$VER</string>
@@ -143,7 +145,7 @@ if [ -n "$MAC_IDENTITY" ] && [ -n "$TEAM" ] && [ -f "$MAC_APP_PROFILE" ] && [ -f
   <key>CMIOExtension</key><dict>
     <key>CMIOExtensionMachServiceName</key><string>$TEAM.org.macshare.mac.camera</string>
   </dict>
-  <key>NSSystemExtensionUsageDescription</key><string>TwinDesk Camera: the other computer's or the phone's camera, as a camera every app on this Mac can pick.</string>
+  <key>NSSystemExtensionUsageDescription</key><string>DuoDesk Camera: the other computer's or the phone's camera, as a camera every app on this Mac can pick.</string>
 </dict></plist>
 PLIST
   cat > dist/camera.entitlements <<PLIST
@@ -193,7 +195,7 @@ else
   ID="-"
   OPTIONS=""
 fi
-APP=dist/TwinDesk.app
+APP=dist/DuoDesk.app
 if [ -n "$MAC_IDENTITY" ]; then
   # Hardened runtime (for notarization): every piece of code signed on its own, inside out, with
   # the entitlements: Electron's helper apps need JIT, and macOS gives the microphone, camera and
@@ -228,5 +230,5 @@ else
   codesign --force $SIGN "$ID" "$APP"
 fi
 rm -f dist/share.entitlements dist/camera.entitlements dist/app.entitlements
-codesign -dr - dist/TwinDesk.app 2>&1 | grep designated
-echo "built mac/dist/TwinDesk.app"
+codesign -dr - dist/DuoDesk.app 2>&1 | grep designated
+echo "built mac/dist/DuoDesk.app"

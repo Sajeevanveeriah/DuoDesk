@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // Mac apps on the PC, main-process side: the app list and launching
 // for the Apps tab, and the per-app windows. Those windows are opened by the Monitor 2 renderer
 // (window.open, so they can show the same video stream, cropped); here they get the app's title,
@@ -137,7 +138,7 @@ class Apps {
     try {
       fs.mkdirSync(this.startDir, { recursive: true });
       const ok = shell.writeShortcutLink(file, fs.existsSync(file) ? 'replace' : 'create', {
-        target: r.target, args: r.args, description: a.name + ' on ' + this.peerName() + ' (TwinDesk)', appUserModelId: Apps.aumid(id),
+        target: r.target, args: r.args, description: a.name + ' on ' + this.peerName() + ' (DuoDesk)', appUserModelId: Apps.aumid(id),
         ...(ico ? { icon: ico, iconIndex: 0 } : {}),
       });
       if (!ok) throw new Error('Windows refused the shortcut');

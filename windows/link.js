@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // WSS client to the Mac: certificate pinning, pairing, hello, liveness, reconnect.
 // After `welcome`, messages are delivered by type through on(type, fn).
 // A host that isn't on this network but is near goes through Bluetooth (opts.ble, blepipe.js): the
@@ -19,7 +20,7 @@ const PAIR_ERRORS = {
   [P.E.PAIR_REFUSED]: '{Name} refused pairing.',
   [P.E.PAIR_TIMEOUT]: 'Pairing timed out.',
   [P.E.BUSY]: '{Name} is already pairing with another device.',
-  [P.E.VERSION_MISMATCH]: '{Name} runs a different TwinDesk version. Update both apps.',
+  [P.E.VERSION_MISMATCH]: '{Name} runs a different DuoDesk version. Update both apps.',
 };
 
 class Link {
@@ -460,7 +461,7 @@ class Link {
       if (ps && ps.phase !== 'failed') {
         const nobody = /^(ECONNREFUSED|ETIMEDOUT|EHOSTUNREACH|ENETUNREACH)$/.test(this.lastError);
         this._pairFailed(ps.phase === 'connecting'
-          ? (nobody ? 'No TwinDesk at ' + ps.address + '.' : 'Could not connect to ' + ps.address + (this.lastError ? ' (' + this.lastError + ')' : '') + '.')
+          ? (nobody ? 'No DuoDesk at ' + ps.address + '.' : 'Could not connect to ' + ps.address + (this.lastError ? ' (' + this.lastError + ')' : '') + '.')
           : 'The connection to {name} closed.');
       }
       return;

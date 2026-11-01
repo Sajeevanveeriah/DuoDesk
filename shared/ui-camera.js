@@ -1,3 +1,4 @@
+// DuoDesk modifications: 2026-11-01; original notices retained.
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
 // Camera tab (Mac, PC and Linux): its switch at the top turns Camera on (off: nothing of it is
 // loaded or runs, and nothing is shared); Start runs the other device's camera here. A
@@ -103,7 +104,8 @@
       const deviceRow = UI.row('Camera', 'Which of {me}’s cameras it shows', [device]);
       const stop = UI.button('Stop', () => cam({ do: 'stop' }), 'danger');
       const liveRow = UI.row('{name} is viewing it now', 'The camera is on while it’s running there', [stop]);
-      const ourCard = UI.card('{me}’s camera', [shareRow, deviceRow, liveRow]);
+      const watcherList = el('div', { class: 'dd-camera-watchers', attrs: { 'aria-live': 'polite' } });
+      const ourCard = UI.card('{me}’s camera', [shareRow, deviceRow, liveRow, watcherList]);
 
       const note = UI.note('info', '');
       body.append(picCard, vCard, ourCard, note);
@@ -112,6 +114,11 @@
       return (s) => {
         cur = s;
         const c = s.camera || {};
+        const meshCamera = Array.isArray(c.watchers);
+        shareRow.label.textContent = meshCamera ? 'Share this camera with connected devices' : UI.fill('Let {name} see this camera');
+        liveRow.label.textContent = meshCamera ? 'Devices watching this camera' : UI.fill('{name} is viewing it now');
+        watcherList.replaceChildren(...(c.watchers || []).map(w => UI.row(w.name || w.id, w.status === 'live' ? 'Watching now' : 'Connecting to camera')));
+        watcherList.hidden = !meshCamera || !c.watchers.length;
         const v = s.vcam || {};
         const phone = UI.isPhone(s);
         const on = running(s);
@@ -166,7 +173,7 @@
                 : v.ready && v.live ? `Sharing now: in Zoom, Teams, the browser…, choose only ${vName} as the camera`
                   : v.ready ? `Ready: the camera running here goes to ${vName}. Choose only that one in the app you call from`
                     : v.on ? (v.message || 'Not installed')
-                      : v.message || `Off: the picture stays in TwinDesk. On: it’s also ${vName}, a camera other apps can pick`);
+                      : v.message || `Off: the picture stays in DuoDesk. On: it’s also ${vName}, a camera other apps can pick`);
 
         // This computer's own camera (not with a phone).
         ourCard.hidden = phone;

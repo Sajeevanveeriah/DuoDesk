@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // The phone in windows on this PC: its screen (mirror, with its sound), and phone apps each in a
 // window of their own on a virtual display of the window's size (scrcpy new_display + flex, so
 // resizing the window resizes the app). One scrcpy session per window (scrcpy.js); the window
@@ -191,7 +192,7 @@ class PhoneViews extends EventEmitter {
   }
 
   cameraState() {
-    if (!this.cameraOn) return { on: false, facing: null, error: 'Camera is off on this computer: turn it on in TwinDesk’s Camera tab there', virtual: false };
+    if (!this.cameraOn) return { on: false, facing: null, error: 'Camera is off on this computer: turn it on in DuoDesk’s Camera tab there', virtual: false };
     const v = [...this.views.values()].find((x) => x.kind === 'camera' && !x.ending);
     return { on: !!v, facing: v ? v.facing : null, error: v ? v.error || '' : '', virtual: !!(this.vcam && this.vcam.ready) };
   }
@@ -710,7 +711,7 @@ class PhoneViews extends EventEmitter {
     try {
       fs.mkdirSync(dir, { recursive: true });
       const ok = shell.writeShortcutLink(file, fs.existsSync(file) ? 'replace' : 'create', {
-        target: r.target, args: r.args, description: a.name + ' on ' + ((this.server.current && this.server.current.name) || 'the phone') + ' (TwinDesk)',
+        target: r.target, args: r.args, description: a.name + ' on ' + ((this.server.current && this.server.current.name) || 'the phone') + ' (DuoDesk)',
         appUserModelId: PhoneViews.aumid(pkg), ...(ico ? { icon: ico, iconIndex: 0 } : {}),
       });
       if (!ok) throw new Error('Windows refused the shortcut');

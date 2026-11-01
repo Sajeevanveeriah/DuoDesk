@@ -16,7 +16,7 @@ class Shortcuts(core: Core) : Feature(core) {
             val s = ShortcutInfoCompat.Builder(core.ctx, "send-${host.id}")
                 .setShortLabel(host.name)
                 .setLongLabel("Send to ${host.name}")
-                .setIcon(IconCompat.createWithResource(core.ctx, R.mipmap.ic_launcher))
+                .setIcon(IconCompat.createWithResource(core.ctx, R.drawable.duodesk_logo))
                 .setCategories(setOf(category))
                 .setLongLived(true)
                 .setIntent(Intent(core.ctx, MainActivity::class.java).setAction(Intent.ACTION_VIEW))

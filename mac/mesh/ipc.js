@@ -1,8 +1,9 @@
 // TwinDesk — Copyright (C) 2026 inukaasith, Erdoğan Yeşil. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // Actions from the control window (and the menu bar): validate, save settings, apply.
 'use strict';
 
-const { ipcMain, shell, app, screen, dialog, clipboard, Menu } = require('electron');
+const { ipcMain, shell, app, screen, dialog, clipboard, Menu, systemPreferences } = require('electron');
 const P = require('../../shared/protocol.js');
 const CL = require('../../shared/cursorlock.js');
 const { LINKS } = require('../../shared/about.js');
@@ -18,7 +19,7 @@ const SETTINGS_URLS = {
   location: 'x-apple.systempreferences:com.apple.preference.security?Privacy_LocationServices',
   extensions: 'x-apple.systempreferences:com.apple.ExtensionsPreferences?Sharing',
 };
-const TABS = ['phone', 'overview', 'connection', 'mirror', 'papps', 'calls', 'messages', 'media', 'pfiles', 'share', 'receive', 'cursor', 'keyboard', 'clipboard', 'notifications', 'files', 'mount', 'terminal', 'audio', 'apps', 'multi', 'general', 'about'];
+const TABS = ['desk', 'tips', 'feedback', 'phone', 'overview', 'connection', 'mirror', 'papps', 'calls', 'messages', 'media', 'pfiles', 'share', 'receive', 'cursor', 'keyboard', 'clipboard', 'notifications', 'files', 'mount', 'terminal', 'audio', 'camera', 'apps', 'multi', 'general', 'about'];
 
 const bool = (v) => !!v;
 const clamp = (lo, hi, dflt) => (v) => {
@@ -157,6 +158,15 @@ function setupIpc(ctx) {
         for (const v of ctx.phoneViews.list()) if (v.kind === 'screen') ctx.phoneViews.close(v.id);
       } else ctx.phoneViews.openScreen();
     },
+    phoneCamera(m) {
+      const { open, opts } = m && typeof m === 'object' ? m : { open: m }; // preload-control: {open, opts}
+      if (open === false) {
+        for (const v of ctx.phoneViews.list()) if (v.kind === 'camera') ctx.phoneViews.close(v.id);
+      } else ctx.phoneViews.openCamera(opts);
+    },
+    phoneListCameras() {
+      return ctx.phone && ctx.phone.bridge ? ctx.phone.bridge.listCameras() : [];
+    },
     phoneOpenApp(arg) {
       if (arg && typeof arg.id === 'string') ctx.phoneViews.openApp(arg.id.slice(0, 200), String(arg.name || '').slice(0, 100));
     },
@@ -275,7 +285,8 @@ function setupIpc(ctx) {
       ctx.server.sendToClient({ t: P.T.STREAM_INPUT, on: !!on }); // Windows goes view-only when off
     },
     // Share this Mac's screen with one device its own way: { mode: 'default'|'none'|'mirror'|'virtual', displayId? }.
-    setStreamTarget(id, choice) {
+    setStreamTarget(request) {
+      const { id, choice } = request || {};
       if (typeof id !== 'string' || !choice || typeof choice !== 'object') return undefined;
       return ctx.stream.setTarget(id, { mode: String(choice.mode), displayId: choice.displayId });
     },
@@ -478,6 +489,26 @@ function setupIpc(ctx) {
       save();
       ctx.stream.restart('screen sound');
     },
+    camera(m) {
+      if (m && m.do === 'on') return ctx.setCamera(m.on === true); // Camera's switch: loads it, or stops it
+      const { camShare: c, vcam } = ctx.cam();
+      if (!c || !m || typeof m !== 'object') return;
+      const allowed = async () => {
+        const st = systemPreferences.getMediaAccessStatus('camera');
+        return st === 'granted' || (st === 'not-determined' && systemPreferences.askForMediaAccess('camera'));
+      };
+      if (m.do === 'view') c.view(m.show === true); // show: its window too
+      else if (m.do === 'close') c.closeView();
+      else if (m.do === 'share') c.setShare(m.on === true, allowed);
+      else if (m.do === 'device') c.setDevice(m.id);
+      else if (m.do === 'stop') c.stopSending();
+      else if (m.do === 'devices') c.listDevices();
+      // Camera › Virtual camera (shared/vcam.js).
+      else if (m.do === 'virtual' && vcam) vcam.setOn(m.on === true);
+      else if (m.do === 'vcamRemove' && vcam) vcam.remove();
+      else if (m.do === 'vcamTarget' && vcam) vcam.setTarget(m.target);
+      else if (m.do === 'rotate' && vcam) vcam.turn();
+    },
     // "Join every device automatically" (autojoin.js): off = no introductions asked, granted or accepted.
     setMesh(partial) {
       setGroup('mesh', partial);
@@ -572,7 +603,7 @@ function setupIpc(ctx) {
       app.exit(0);
     },
     setMulti(on) {
-      require('../multi').set(on === true); // Multi-device off: TwinDesk restarts one to one
+      require('../multi').set(on === true); // Multi-device off: DuoDesk restarts one to one
     },
   };
 

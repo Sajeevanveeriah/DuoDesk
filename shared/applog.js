@@ -1,3 +1,4 @@
+// DuoDesk modifications: 2026-11-01; original notices retained.
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
 // Log files, for all three apps (one-to-one and Multi-device): what's printed with console.* (the
 // helpers' stderr too: helper.js prints it) also goes to TwinDesk.log in the system's log folder
@@ -17,7 +18,7 @@ const path = require('path');
 const util = require('util');
 
 let maxBytes = 5 * 1024 * 1024;
-const KEEP = 3; // TwinDesk.log and two older ones
+const KEEP = 3; // DuoDesk.log and two older ones
 const LEVELS = ['log', 'info', 'warn', 'error', 'debug'];
 const STATS_MS = 30000;
 
@@ -31,7 +32,7 @@ function dir() {
   return folder;
 }
 
-const file = (i) => path.join(folder, i ? `TwinDesk.${i}.log` : 'TwinDesk.log');
+const file = (i) => path.join(folder, i ? `DuoDesk.${i}.log` : 'DuoDesk.log');
 const stamp = () => new Date().toISOString();
 
 function openStream() {
@@ -41,13 +42,19 @@ function openStream() {
     size = 0;
   }
   // Opened now (not on a later turn), so a burst that fills it rotates a file that's there.
-  stream = fs.createWriteStream(null, { fd: fs.openSync(file(0), 'a') });
-  stream.on('error', () => { stream = null; }); // a full or read-only disk: console only
+  // Finish each bounded log write before rotation. A queued WriteStream can still append to a
+  // renamed file, and Windows may refuse renaming its open handle during a burst.
+  const fd = fs.openSync(file(0), 'a');
+  let closed = false;
+  stream = {
+    write(line) { if (!closed) fs.writeSync(fd, line); },
+    end() { if (!closed) { closed = true; fs.closeSync(fd); } },
+  };
 }
 
 // TwinDesk.log -> .1.log -> .2.log; the oldest goes.
 function rotate() {
-  if (stream) stream.end(); // what it still has goes to the renamed file
+  if (stream) stream.end(); // close before renaming, with no queued writes
   for (let i = KEEP - 1; i > 0; i--) {
     try { fs.renameSync(file(i - 1), file(i)); } catch (_) { /* not there yet */ }
   }
@@ -100,7 +107,7 @@ function start(app, opts = {}) {
       try { write(`${stamp()} ${level === 'log' || level === 'info' ? '' : level.toUpperCase() + ' '}${util.format(...args)}\n`); } catch (_) { /* best effort */ }
     };
   }
-  write(`${stamp()} ---- TwinDesk ${app.getVersion()} started (${process.platform} ${process.arch}, Electron ${process.versions.electron || ''}) ----\n`);
+  write(`${stamp()} ---- DuoDesk ${app.getVersion()} started (${process.platform} ${process.arch}, Electron ${process.versions.electron || ''}) ----\n`);
   // Handled here, the app goes on (as Electron's own dialog let it), and it's in the log.
   process.on('uncaughtException', (e) => crash('uncaughtException', e));
   process.on('unhandledRejection', (e) => crash('unhandledRejection', e));

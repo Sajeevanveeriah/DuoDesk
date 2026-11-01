@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // The bundled adb (Android platform-tools), for the phone's wireless debugging: pairing with
 // its code, connecting, shell commands, pushing scrcpy-server and port forwards. The built app has
 // it in Resources/adb (build-app.sh).
@@ -91,7 +92,7 @@ class Adb {
     let r = await this.run(args, { timeout });
     if (/no route to host/i.test(`${r.out}${r.err}`) && !this.restarted) {
       this.restarted = true;
-      console.log('[adb] no route to host: restarting the adb server from TwinDesk');
+      console.log('[adb] no route to host: restarting the adb server from DuoDesk');
       await this.run(['kill-server'], { timeout: 5000 });
       await this.run(['start-server'], { timeout: 10000 });
       r = await this.run(args, { timeout });

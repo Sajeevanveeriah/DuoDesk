@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // macshare-helper: JSON lines on stdin (requests) / stdout (replies + events). Logs go to stderr.
 // Request {"id":1,"cmd":"...",...} -> {"id":1,"ok":true,...} | {"id":1,"ok":false,"error":"..."}.
 // Requests without "id" get no reply. Events: {"event":"..."}. Exits when stdin closes.
@@ -52,6 +53,15 @@ func zones(_ v: Any?) -> [ClosedRange<Double>]? {
   return out.isEmpty ? nil : out
 }
 
+func sideZones(_ value: Any?) -> [String: [ClosedRange<Double>]] {
+  guard let values = value as? [String: Any] else { return [:] }
+  var result: [String: [ClosedRange<Double>]] = [:]
+  for side in ["left", "right", "top", "bottom"] {
+    if let ranges = zones(values[side]) { result[side] = ranges }
+  }
+  return result
+}
+
 func handle(_ line: String) {
   guard let data = line.data(using: .utf8),
         let msg = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
@@ -66,6 +76,7 @@ func handle(_ line: String) {
   switch cmd {
   case "kvmConfig":
     Capture.shared.edgeZones = zones(msg["zones"])
+    Capture.shared.edgeZonesBySide = sideZones(msg["zonesBySide"])
     guard Capture.shared.startTap() else { return replyError(id, "event tap failed (Accessibility / Input Monitoring)") }
     Flash.shared.prepare()
 #if MULTI
@@ -106,6 +117,7 @@ func handle(_ line: String) {
     reply(id)
   case "armReturn":
     Capture.shared.returnZones = zones(msg["zones"])
+    Capture.shared.returnZonesBySide = sideZones(msg["zonesBySide"])
 #if MULTI
     let sides = (msg["sides"] as? [String]) ?? [(msg["side"] as? String) ?? "right"]
     Capture.shared.armReturn(on: (msg["on"] as? Bool) ?? false, sides: sides, resistance: num("resistancePx", 120))
@@ -162,7 +174,7 @@ func handle(_ line: String) {
     let height = (msg["height"] as? NSNumber)?.intValue ?? 1080
     let hiDPI = (msg["hiDPI"] as? Bool) ?? false
     let hz = (msg["hz"] as? NSNumber)?.doubleValue ?? 60
-    let name = (msg["name"] as? String) ?? "TwinDesk"
+    let name = (msg["name"] as? String) ?? "DuoDesk"
     virtualDisplay.create(width: width, height: height, hiDPI: hiDPI, hz: hz, name: name) { result in
       switch result {
       case .success(let info): reply(id, info)

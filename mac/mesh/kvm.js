@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith, Erdoğan Yeşil. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // Shared cursor + keyboard: the state machine for both roles, one partner at a time.
 //   driving: this Mac's input goes to the partner device (owner)
 //   driven:  the partner device's input drives this Mac
@@ -20,6 +21,7 @@ const { KvmMoves } = require('../../shared/kvm-moves.js');
 const { KeyLayout } = require('../../shared/keylayout.js');
 const CL = require('../../shared/cursorlock.js');
 const store = require('./store');
+const { MeshGeometry } = require('./geometry');
 
 // {them} = the other computer's name (Kvm._them).
 const REFUSED = { busy: '{them} is using this computer right now', not_allowed: '{them} doesn’t accept input from here' };
@@ -29,7 +31,7 @@ const OFF_BLE = 'Cursor sharing is off over Bluetooth';
 class Kvm extends EventEmitter {
   // hub: hub.js (bus, sessions, select, selectedId, device); helper: the Mac helper; getSettings;
   // clipboard, input, drop, fileSend: the features; layoutSync: layout-sync.js (the edges come from it).
-  constructor({ hub, layoutSync, helper, getSettings, clipboard, input, drop, fileSend }) {
+  constructor({ hub, layoutSync, helper, getSettings, clipboard, input, drop, fileSend, screen = null }) {
     super();
     Object.assign(this, { hub, layoutSync, helper, getSettings, clipboard, input, drop, fileSend });
     this.dragOut = null; // id of our file drag while it is on the PC and not yet dropped
@@ -66,6 +68,8 @@ class Kvm extends EventEmitter {
     this.lockAt = 0;
     this.lockKey = new CL.LockKey(() => this.getSettings().keys.lockKeys);
     this.drivenMouse = false; // driven with the mouse too (not keyboard only): the edges are watched
+    this.geometry = new MeshGeometry({ bus: hub.bus, screen, edges: () => this.edges,
+      changed: () => { this.config(); if (this.mode === 'driven') this._armReturn(); } });
 
     // Message types -> handler(m, fromId). The bus delivers them; onPartnerMessage() replays a phone bridge's.
     const K = [P.T.K_MOVE, P.T.K_DOWN, P.T.K_UP, P.T.K_WHEEL, P.T.K_KEY_DOWN, P.T.K_KEY_UP];
@@ -299,6 +303,7 @@ class Kvm extends EventEmitter {
     this.helper
       .request('kvmConfig', {
         side: sides[0] || null, sides, resistancePx: k.resistancePx, keyboard: !!k.keyboard,
+        zonesBySide: this.geometry.zones(sides),
         driveOther: sides.length > 0,
         hotkey: this.getSettings().keys.hotkey || P.HOTKEY_MAC,
         cooldownMs: P.KVM_CROSS_COOLDOWN_MS,
@@ -524,6 +529,13 @@ class Kvm extends EventEmitter {
   _onHelper(name, ev) {
     const k = this.cfg;
     switch (name) {
+      case 'fileHandoff': {
+        const id = this.edges[ev.side];
+        if (this.mode !== 'home' || !this.fileSend.dragOn || !id || !Array.isArray(ev.paths)) return;
+        const paths = ev.paths.filter((p) => typeof p === 'string' && p.startsWith('/')).slice(0, 1000);
+        if (paths.length && this.hub.select(id)) this.fileSend.sendBatch(paths, 'send');
+        break;
+      }
       case 'edge':
         this._onEdge(ev);
         break;
@@ -593,7 +605,7 @@ class Kvm extends EventEmitter {
       this.helper.send('capture', { on: false });
       return;
     }
-    this._take({ where: { side: P.opposite(side), offset: ev.offset }, paths: ev.drag && ev.drag.paths }, id);
+    this._take({ where: { side: P.opposite(side), offset: this.geometry.toPeer(id, side, ev.offset) }, paths: ev.drag && ev.drag.paths }, id);
   }
 
   // ---- driven: a device drives this Mac ----
@@ -631,7 +643,8 @@ class Kvm extends EventEmitter {
   _armReturn() {
     const sides = this._returnSides();
     // side: the first one, for a helper from before several sides (it watches that one; a newer one reads sides)
-    this.helper.send('armReturn', { on: true, side: sides[0] || null, sides, resistancePx: this.cfg.resistancePx });
+    this.helper.send('armReturn', { on: true, side: sides[0] || null, sides,
+      zonesBySide: this.geometry.zones(sides), resistancePx: this.cfg.resistancePx });
   }
 
   // The helper saw the pointer leave this Mac (driven) through msg.side. Back to the driver: kvm.home as
@@ -640,9 +653,9 @@ class Kvm extends EventEmitter {
   // device leaves the edge live.
   _onReturn(msg) {
     const side = E.SIDES.includes(msg.side) ? msg.side : null; // an older helper says nothing: the way back
-    if (!side || side === this.layoutSync.sideTo(this.partner)) return this._sendHome(msg.offset, '');
+    if (!side || side === this.layoutSync.sideTo(this.partner)) return this._sendHome(this.geometry.toPeer(this.partner, side, msg.offset), '');
     const to = this.layoutSync.across(side);
-    if (to && to !== this.partner) this._send(this.partner, { t: P.T.KVM_NEXT, route: this.peerRoute, to, side, offset: Number(msg.offset) || 0 });
+    if (to && to !== this.partner) this._send(this.partner, { t: P.T.KVM_NEXT, route: this.peerRoute, to, side, offset: this.geometry.toPeer(to, side, Number(msg.offset) || 0) });
     this._armReturn();
   }
 
@@ -796,6 +809,7 @@ class Kvm extends EventEmitter {
 
   // App quitting: give everything back.
   shutdown() {
+    this.geometry.destroy();
     if (this.mode === 'driving') this.goHome('');
     else if (this.mode === 'driven') this._sendHome(undefined, '');
   }

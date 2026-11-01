@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // The file managers' right-click menu gets "Send to <peer> (TwinDesk)" (port of
 // windows/sendto.js): a script in Nautilus' and Caja's Scripts menu, a Nemo action, a Dolphin
 // service menu and a Thunar custom action, each running `twindesk --send-files <paths>`. That copy
@@ -66,17 +67,17 @@ class SendTo {
     const name = peer ? String(peer).replace(/[/\\\x00-\x1f]/g, '_').replace(/^\.+/, '').slice(0, 80) : '';
     if (name === this.name) return;
     this.name = name;
-    const label = 'Send to ' + name + ' (TwinDesk)';
+    const label = 'Send to ' + name + ' (DuoDesk)';
     const exec = launcher().map(desk).join(' ') + ' ' + ARG + ' %F';
     try {
       // Scripts menus: the file name is the label.
       for (const [dir, cmd] of [[path.join(DATA, 'nautilus', 'scripts'), 'nautilus'], [path.join(CONFIG, 'caja', 'scripts'), 'caja']]) {
-        this._clear(dir, (f) => f.endsWith(' (TwinDesk)'));
+        this._clear(dir, (f) => f.endsWith(' (DuoDesk)'));
         if (name && installed(cmd)) write(path.join(dir, label), script(name), 0o755);
       }
       const nemo = path.join(DATA, 'nemo', 'actions', 'twindesk-send.nemo_action');
       if (name && installed('nemo')) {
-        write(nemo, `[Nemo Action]\nName=${label}\nComment=Send the selected files with TwinDesk (${ARG})\nExec=${exec}\nIcon-Name=document-send\nSelection=notnone\nExtensions=any;\n`, 0o644);
+        write(nemo, `[Nemo Action]\nName=${label}\nComment=Send the selected files with DuoDesk (${ARG})\nExec=${exec}\nIcon-Name=document-send\nSelection=notnone\nExtensions=any;\n`, 0o644);
       } else rm(nemo);
       // Dolphin: KDE Frameworks 6 and 5 look in different folders; service menus must be executable.
       const service = `[Desktop Entry]\nType=Service\nMimeType=all/all;\nActions=twindeskSend;\nX-KDE-Priority=TopLevel\n\n[Desktop Action twindeskSend]\nName=${label}\nIcon=document-send\nExec=${exec}\n`;
@@ -110,7 +111,7 @@ class SendTo {
     const ours = new RegExp('\\s*<action>(?:(?!</action>)[\\s\\S])*<unique-id>' + UCA_ID + '</unique-id>[\\s\\S]*?</action>', 'g');
     text = text.replace(ours, '');
     if (label) {
-      const action = `\n<action>\n\t<icon>document-send</icon>\n\t<name>${xml(label)}</name>\n\t<unique-id>${UCA_ID}</unique-id>\n\t<command>${xml(exec)}</command>\n\t<description>Send the selected files with TwinDesk</description>\n\t<patterns>*</patterns>\n\t<directories/>\n\t<audio-files/>\n\t<image-files/>\n\t<other-files/>\n\t<text-files/>\n\t<video-files/>\n</action>`;
+      const action = `\n<action>\n\t<icon>document-send</icon>\n\t<name>${xml(label)}</name>\n\t<unique-id>${UCA_ID}</unique-id>\n\t<command>${xml(exec)}</command>\n\t<description>Send the selected files with DuoDesk</description>\n\t<patterns>*</patterns>\n\t<directories/>\n\t<audio-files/>\n\t<image-files/>\n\t<other-files/>\n\t<text-files/>\n\t<video-files/>\n</action>`;
       if (!/<\/actions>/.test(text)) text = '<?xml version="1.0" encoding="UTF-8"?>\n<actions>\n</actions>\n';
       text = text.replace(/<\/actions>/, action + '\n</actions>');
     }

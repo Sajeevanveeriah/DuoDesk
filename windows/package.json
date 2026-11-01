@@ -1,8 +1,8 @@
 {
   "name": "macshare-win",
-  "productName": "TwinDesk",
-  "version": "2.5.0-beta.1",
-  "description": "TwinDesk for Windows: pair with a Mac, view its screen, share mouse, keyboard and clipboard.",
+  "productName": "DuoDesk",
+  "version": "2.5.0",
+  "description": "One mouse, one keyboard and one clipboard across your computers.",
   "license": "GPL-3.0",
   "private": true,
   "main": "main.js",
@@ -11,7 +11,8 @@
     "test:monitor": "electron . --test-monitor",
     "build:helper": "..\\windows-helper\\build.cmd",
     "fetch-adb": "node scripts/fetch-adb.js",
-    "dist": "node installer/build.js"
+    "dist": "node installer/build.js",
+    "test:input": "powershell -NoProfile -File ../windows-helper/tests/run-policy.ps1"
   },
   "dependencies": {
     "ws": "^8.18.0"

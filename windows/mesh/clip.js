@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith, Erdoğan Yeşil. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // Clipboard text sharing across every connected device (docs/mesh.md, one pool): a copy goes to
 // the devices that accept clipboard from us, a clip from any device is applied once and relayed by
 // the Pool. Switch/instant modes, concealed filter, size limit, clip.policy per device and the
@@ -7,6 +8,7 @@ const electron = require('electron');
 const P = require('../../shared/protocol.js');
 const { Pool } = require('../../shared/mesh.js');
 const { Latest } = require('../../shared/clipsync.js');
+const { MeshClipImages } = require('../../shared/mesh-clipimages');
 
 const electronClipboard = electron.clipboard; // undefined under plain node (tests inject one)
 const POLL_MS = 500; // instant mode: how often the clipboard is checked for a new copy
@@ -52,6 +54,7 @@ class Clip {
     this.clipboard = opts.clipboard || electronClipboard;
     this.pool = new Pool({ name: 'clip', selfId: this.mesh.selfId, peers: () => clipPeers(this.mesh) });
     this.latest = new Latest({ selfId: this.mesh.selfId }); // the latest copy wins (shared/clipsync.js)
+    this.images = new MeshClipImages({ bus: this.bus, mesh: this.mesh, latest: this.latest, cfg: () => this.cfg, clipboard: this.clipboard, nativeImage: electron.nativeImage, session: opts.session, onChange: this.onChange });
     this.lastSync = { sent: null, received: null };
     this.history = []; // newest first: {dir: 'out'|'in', at, text, size, from}
     this.lastSkip = '';
@@ -104,6 +107,7 @@ class Clip {
     const c = this.cfg;
     if (c.historySize < this.history.length) this.history.length = c.historySize;
     this._applyPoll();
+    this.images.applySettings();
     this.sendPolicy();
     this.onChange();
   }
@@ -121,7 +125,7 @@ class Clip {
 
   _sendPolicy(id) {
     const c = this.cfg;
-    this.bus.send(id, { t: P.T.CLIP_POLICY, accept: !!(c.enabled && c.receive) });
+    this.bus.send(id, { t: P.T.CLIP_POLICY, accept: !!(c.enabled && c.receive), images: this.images.accept });
   }
 
   _startPoll() {
@@ -139,12 +143,14 @@ class Clip {
   // One instant-mode check: a new clipboard text is published to the pool.
   async pollOnce() {
     const t = await this._readText();
+    if (!t && this.cfg.images) { await this.images.offerClipboard(this.cfg.skipConcealed && isConcealed(this.clipboard)); return; }
     if (t === this.seen) return;
     this.seen = t;
     await this.sendIfChanged('instant');
   }
 
   destroy() {
+    this.images.destroy();
     this._stopPoll();
   }
 
@@ -177,11 +183,16 @@ class Clip {
     // An older copy than the newest this device knows (its own last copy counts): not applied. The pool
     // relayed it anyway, so each device decides for itself.
     if (!this.latest.accept(r.msg, 'text')) return;
+    const accepted = this.latest.cur;
+    await this.images.text();
+    if (this.latest.cur !== accepted) return;
     const text = m.text;
     const name = this._nameOf(r.msg.o, m.on, from);
     this.lastSync.received = text;
     this.seen = text; // so instant mode doesn't publish it back
-    if ((await this._readText()) !== text) this.clipboard.writeText(text);
+    const previous = await this._readText();
+    if (this.latest.cur !== accepted) return;
+    if (previous !== text) this.clipboard.writeText(text);
     this._remember('in', text, name);
     this.onChange();
   }
@@ -194,8 +205,11 @@ class Clip {
     const c = this.cfg;
     if (!c.enabled || !c.send || !this.bus.connectedIds().length) return;
     if (!this.peerAccepts) return this._skip("{name} doesn't accept {me}’s clipboard");
+    const before = this.latest.cur;
     const text = await this._readText();
-    if (!text || text === this.lastSync.sent || text === this.lastSync.received) return;
+    if (before !== this.latest.cur) return;
+    if (!text) return this.images.offerClipboard(c.skipConcealed && isConcealed(this.clipboard));
+    if (text === this.lastSync.sent || text === this.lastSync.received) return;
     if (c.skipConcealed && isConcealed(this.clipboard)) {
       this.lastSync.sent = text; // don't retry this item
       return this._skip('skipped a password (concealed item)');
@@ -205,6 +219,8 @@ class Clip {
       this.lastSync.sent = text;
       return this._skip('skipped ' + Math.round(size / 1024) + ' KB (over ' + c.maxKB + ' KB)');
     }
+    await this.images.text();
+    if (before !== this.latest.cur) return;
     const stamp = this.latest.copied('text'); // when the copy happened; the pool adds where (o)
     if (!this.pool.publish({ t: P.T.CLIP, text, ts: stamp.ts }).sent.length) return;
     this.lastSync.sent = text;
@@ -241,6 +257,8 @@ class Clip {
 
   get view() {
     return {
+      imageSupport: true,
+      peerImages: this.images.peerImages,
       peerAccepts: this.peerAccepts,
       lastSkip: this.lastSkip,
       history: this.history.map((h) => ({

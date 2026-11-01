@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith, Erdoğan Yeşil. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // The hub joins the link layer (server.js, hostpair.js, links.js, session.js) to the mesh
 // (shared/mesh.js), as docs/mesh.md describes. Plain Node: no Electron.
 //
@@ -75,7 +76,7 @@ class Hub extends EventEmitter {
     server.on('listenError', (err) => {
       this._host = {
         on: false,
-        error: err.code === 'EADDRINUSE' ? 'Port ' + P.PORT + ' is in use (another copy of TwinDesk?)' : err.code || err.message,
+        error: err.code === 'EADDRINUSE' ? 'Port ' + P.PORT + ' is in use (another copy of DuoDesk?)' : err.code || err.message,
       };
       this._change();
     });

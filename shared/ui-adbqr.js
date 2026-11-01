@@ -1,3 +1,4 @@
+// DuoDesk modifications: 2026-11-01; original notices retained.
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
 // Connection › Wireless debugging › Pair with a QR code (Mac, PC and Linux): next to the 6-digit
 // code, which stays. Show QR Code starts it here (api.adbQr, shared/adbqr.js) and draws the code for
@@ -16,7 +17,7 @@ UI.adbQr = () => {
   const note = el('div', { class: 'hint' });
   const box = el('div', { class: 'qr-box' }, [img, el('div', { class: 'qr-text' }, [
     el('strong', { text: 'Scan with the phone' }),
-    el('ol', {}, ['Settings › Developer options › Wireless debugging.', 'Tap Pair device with QR code.', 'Scan this code. TwinDesk connects by itself.'].map((t) => el('li', { text: t }))),
+    el('ol', {}, ['Settings › Developer options › Wireless debugging.', 'Tap Pair device with QR code.', 'Scan this code. DuoDesk connects by itself.'].map((t) => el('li', { text: t }))),
     note,
   ])]);
   box.hidden = true;

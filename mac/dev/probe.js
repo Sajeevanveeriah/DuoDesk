@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // Self-check: a minimal Windows-side client. Pairs once (click Allow),
 // saves {fp, token} in dev/.probe.json, then says hello, pings for 5 s and prints the RTT.
 // Usage: npm run probe [-- <host>]
@@ -54,7 +55,7 @@ ws.on('message', (data) => {
   switch (m.t) {
     case P.T.PAIR_NONCE:
       send({ t: P.T.PAIR_REVEAL, nonce: nw });
-      console.log(`code ${P.sasCode(fp, nw, m.nonce)} — click Allow in the TwinDesk window`);
+      console.log(`code ${P.sasCode(fp, nw, m.nonce)} — click Allow in the DuoDesk window`);
       send({ t: P.T.PAIR_CONFIRM });
       break;
     case P.T.PAIR_OK:

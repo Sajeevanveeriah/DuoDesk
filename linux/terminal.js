@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // Terminal, this computer → the other one (Linux version of windows/terminal.js): an ed25519 key
 // made once, handed over the paired link (ssh.key); the other computer's host keys come back
 // (ssh.info) and are pinned in our own known_hosts, so ssh never asks for a password or "trust this
@@ -40,7 +41,7 @@ class Terminal {
     // Older versions wrote a `macshare` command; `ssh twindesk` replaces it.
     try {
       const old = path.join(os.homedir(), '.local', 'bin', 'macshare');
-      if (fs.existsSync(old) && fs.readFileSync(old, 'utf8').includes('written by the TwinDesk app')) fs.rmSync(old);
+      if (fs.existsSync(old) && fs.readFileSync(old, 'utf8').includes('written by the DuoDesk app')) fs.rmSync(old);
     } catch (_) { /* leave it */ }
 
     this.link.on('welcome', () => this.apply());

@@ -1,0 +1,11 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
+for (const file of ['public/index.html', 'public/admin.html', 'public/style.css', 'public/logo.svg', 'public/fonts/Manrope.ttf', 'public/fonts/JetBrainsMono.ttf', 'public/fonts/Manrope-OFL.txt', 'public/fonts/JetBrainsMono-OFL.txt']) assert.ok(fs.statSync(file).size > 0, file);
+for (const file of ['public/app.js', 'public/admin.js', ...fs.readdirSync('netlify/functions').map(f => `netlify/functions/${f}`)]) execFileSync(process.execPath, ['--check', file]);
+const html = fs.readFileSync('public/index.html','utf8');
+assert.ok(!/<script(?![^>]*\bsrc=)[^>]*>/i.test(html), 'No inline scripts under strict CSP');
+assert.ok(!/\son\w+=/i.test(html), 'No inline event handlers');
+assert.ok(fs.readFileSync('netlify.toml','utf8').includes('publish = "public"'));
+assert.ok(!fs.existsSync('public/schema.sql'), 'Schema must not be published');
+console.log('PASS: standalone publish directory, offline font/licence assets, source syntax and static CSP compatibility.');

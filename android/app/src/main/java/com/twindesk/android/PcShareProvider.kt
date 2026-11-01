@@ -7,6 +7,7 @@
 package com.twindesk.android
 
 import android.content.Context
+import android.content.Intent
 import android.database.Cursor
 import android.database.MatrixCursor
 import android.net.Uri
@@ -53,8 +54,10 @@ class PcShareProvider : DocumentsProvider() {
     private fun idOf(rel: String) = "/" + rel.trim('/')
     private fun parentId(id: String) = idOf(rel(id).substringBeforeLast('/', ""))
 
-    private fun open(op: String, id: String, extra: String = ""): HttpsURLConnection {
-        val p = pc()
+    private fun open(op: String, id: String, extra: String = "", target: FolderShare.Pc? = null): HttpsURLConnection {
+        val current = pc()
+        if (target != null && current != target) throw FileNotFoundException("The shared computer changed; edit kept for recovery")
+        val p = target ?: current
         val c = URL("https://${if (p.host.contains(':')) "[${p.host}]" else p.host}:${p.port}/${p.token}/$op?p=${Uri.encode(rel(id))}$extra").openConnection() as HttpsURLConnection
         c.sslSocketFactory = pinned(p.fp).socketFactory
         c.hostnameVerifier = HostnameVerifier { _, _ -> true } // the pin is the identity, not the name
@@ -77,8 +80,8 @@ class PcShareProvider : DocumentsProvider() {
     }
 
     // A request to the computer: (status, body text).
-    private fun call(method: String, op: String, id: String, extra: String = "", body: File? = null): Pair<Int, String> {
-        val c = open(op, id, extra)
+    private fun call(method: String, op: String, id: String, extra: String = "", body: File? = null, target: FolderShare.Pc? = null): Pair<Int, String> {
+        val c = open(op, id, extra, target)
         try {
             c.requestMethod = method
             c.connectTimeout = 8000
@@ -131,9 +134,9 @@ class PcShareProvider : DocumentsProvider() {
             add(Root.COLUMN_ROOT_ID, ROOT)
             add(Root.COLUMN_DOCUMENT_ID, "/")
             add(Root.COLUMN_TITLE, p.name)
-            add(Root.COLUMN_SUMMARY, "TwinDesk")
+            add(Root.COLUMN_SUMMARY, "DuoDesk")
             add(Root.COLUMN_FLAGS, Root.FLAG_SUPPORTS_CREATE or Root.FLAG_SUPPORTS_IS_CHILD)
-            add(Root.COLUMN_ICON, R.mipmap.ic_launcher)
+            add(Root.COLUMN_ICON, R.drawable.duodesk_logo)
             add(Root.COLUMN_MIME_TYPES, "*/*")
             add(Root.COLUMN_AVAILABLE_BYTES, if (free >= 0) free else null)
         }
@@ -202,16 +205,28 @@ class PcShareProvider : DocumentsProvider() {
         val m = ParcelFileDescriptor.parseMode(mode)
         val writing = mode.contains('w')
         if (!writing) return ParcelFileDescriptor.open(copy(documentId, signal), ParcelFileDescriptor.MODE_READ_ONLY)
+        val target = pc()
         // Writing: from what's there unless it's being replaced (w, wt), then back on close.
-        val f = if (mode.contains('t') || mode == "w") File.createTempFile("w", ".part", File(context!!.cacheDir, "pcshare").apply { mkdirs() })
-        else copy(documentId, signal)
+        // Durable app storage: failed saves survive process death and cache eviction.
+        val f = Writeback.create(File(context!!.filesDir, "pcshare-recovery"), documentId)
+        if (!(mode.contains('t') || mode == "w")) copy(documentId, signal).inputStream().use { input ->
+            f.outputStream().use { output -> input.copyTo(output) }
+        }
         return ParcelFileDescriptor.open(f, m, writes) { e ->
             if (e == null) {
-                runCatching { call("PUT", "file", documentId, body = f) }.onFailure { Log.w("TwinDesk", "pcshare: write back $documentId: $it") }
-                notifyChildren(parentId(documentId))
+                Writeback.complete(f) { call("PUT", "file", documentId, body = f, target = target).first }
+                    .onSuccess { notifyChildren(parentId(documentId)) }
+                    .onFailure { failure -> saveFailed(documentId, f, failure) }
+            } else {
+                saveFailed(documentId, f, e)
             }
-            f.delete()
         }
+    }
+
+    private fun saveFailed(id: String, copy: File, failure: Throwable) {
+        Log.w("DuoDesk", "pcshare: save failed for $id; recovery retained at ${copy.path}", failure)
+        val ctx = context!!
+        Notify.files(ctx, 997, "Save did not finish", "Your edit is kept on this phone. Open DuoDesk > General > Recovered edits to export it.", null, Intent(ctx, MainActivity::class.java))
     }
 
     override fun createDocument(parentDocumentId: String, mimeType: String, displayName: String): String {

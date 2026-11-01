@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // About tab (same cards on all three apps): the app icon and version, update checks, the
 // maker, this computer, the app's build and the licence. Facts come from shared/about.js.
 'use strict';
@@ -29,10 +30,10 @@ UI.tab({
       });
       return card;
     };
-    const nameEl = el('div', { class: 'about-name', text: 'TwinDesk' });
+    const nameEl = el('div', { class: 'about-name', text: 'DuoDesk' });
     const verEl = el('div', { class: 'about-ver' });
     const hero = el('div', { class: 'card about-hero keep-on' }, [
-      el('div', { class: 'about-icon', attrs: { role: 'img', 'aria-label': 'TwinDesk icon' } }),
+      el('div', { class: 'about-icon', attrs: { role: 'img', 'aria-label': 'DuoDesk icon' } }),
       nameEl,
       verEl,
       el('div', { class: 'about-tag', text: 'Use two computers as one desk' }),
@@ -44,7 +45,7 @@ UI.tab({
     const updNotes = UI.button('What’s New', () => window.UpdaterModal && window.UpdaterModal.show(), 'small');
     const updUnskip = UI.button('Don’t skip', () => api.unskipUpdate && api.unskipUpdate(), 'small');
     const updGet = UI.button('Download', () => api.openUpdate(), 'small primary');
-    const updRow = UI.row('TwinDesk', '', [updStatus, updNotes, updUnskip, updGet, updCheck]);
+    const updRow = UI.row('DuoDesk', '', [updStatus, updNotes, updUnskip, updGet, updCheck]);
     const updAuto = UI.switch((v) => api.setUpdates({ auto: v }), { label: 'Check for updates automatically' });
 
     const pc = facts('This computer', ['Computer name', 'System', 'Kernel', 'Processor', 'Memory', 'Architecture']);
@@ -57,11 +58,12 @@ UI.tab({
         updRow,
         UI.row('Check automatically', 'Looks for new releases on GitHub every few hours', [updAuto]),
       ], { cls: 'keep-on' }),
-      UI.card('Made by', [
+      UI.card('Open-source credits', [
+        UI.row('Built on TwinDesk', 'Original engine by Inuka Asith and contributors. DuoDesk modifications retain GPL-3.0.', [link('Original source', 'upstream')]),
         UI.row('Inuka Asith', 'inukaasith.vercel.app', [link('Portfolio', 'portfolio')]),
-        UI.row('Source code', 'github.com/InukaAsith/TwinDesk', [link('GitHub', 'github')]),
+        UI.row('DuoDesk source code', 'github.com/Sajeevanveeriah/DuoDesk', [link('GitHub', 'github')]),
         UI.row('All releases', 'Downloads for macOS, Windows and Linux', [link('Releases', 'releases')]),
-        UI.row('Log files', 'What TwinDesk did and any crash, to attach to a bug report', [link('Open log folder', 'logs')]),
+        UI.row('Log files', 'What DuoDesk did and any crash, to attach to a bug report', [link('Open log folder', 'logs')]),
       ], { cls: 'keep-on' }),
       pc,
       build,
@@ -73,7 +75,7 @@ UI.tab({
 
     return (s) => {
       const a = s.about || { app: {}, pc: {} };
-      nameEl.textContent = a.app.name || 'TwinDesk';
+      nameEl.textContent = a.app.name || 'DuoDesk';
       verEl.textContent = 'Version ' + (a.app.version || s.version || '');
       thanksRow.setHint(a.app.thanks || '');
       thanksRow.hidden = !a.app.thanks;

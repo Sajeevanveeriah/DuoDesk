@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // Main process: lifecycle, windows, tray, IPC, and the state pushed to the control window.
 //
 // State object sent to the control window ('state' channel) on every change:
@@ -53,7 +54,9 @@ app.commandLine.appendSwitch('force-fieldtrials', 'WebRTC-ForceSendPlayoutDelay/
 app.setPath('userData', process.env.MACSHARE_PROFILE || path.join(app.getPath('appData'), 'MacShare')); // PROFILE: a second dev copy
 require('../shared/applog.js').start(app); // console.* and crashes into the log folder, both apps
 // Multi-device switched on (multi.js, docs/multi-device.md): mesh/main.js runs instead of everything below.
-if (require('./multi').on()) return void require('./mesh/main.js');
+const multiMode = require('./multi').on();
+console.log(`[startup] mode=${multiMode ? 'multi-device' : 'pair'}`);
+if (multiMode) return void require('./mesh/main.js');
 if (!app.requestSingleInstanceLock()) {
   app.quit();
   process.exit(0);
@@ -290,7 +293,7 @@ function handleSendLink(url) {
   try { u = new URL(url); } catch { return; }
   const paths = u.searchParams.getAll('p').filter((x) => x.startsWith('/')).slice(0, 1000);
   if (!paths.length) return;
-  if (!peer.current) return hud && hud.show('away', 'Not connected', 'Open TwinDesk on the other computer first');
+  if (!peer.current) return hud && hud.show('away', 'Not connected', 'Open DuoDesk on the other computer first');
   actions.sendFiles(paths);
   hud && hud.show('away', `Sending ${paths.length} item${paths.length === 1 ? '' : 's'} to ${peer.current.name}`);
 }
@@ -365,7 +368,7 @@ function createWindow() {
     height: 720,
     minWidth: 760,
     minHeight: 520,
-    title: 'TwinDesk',
+    title: 'DuoDesk',
     show: false,
     titleBarStyle: 'hiddenInset', // the sidebar runs up under the traffic lights
     vibrancy: 'sidebar',
@@ -466,7 +469,7 @@ function updateTray() {
     found.map((d) => [d.id, d.name, d.os]), updates && updates.status.available && updates.status.latest]);
   if (key === trayKey) return;
   trayKey = key;
-  tray.setToolTip(c ? `TwinDesk: ${c.name}` : 'TwinDesk');
+  tray.setToolTip(c ? `DuoDesk: ${c.name}` : 'DuoDesk');
   tray.setContextMenu(Menu.buildFromTemplate(trayMenu.template({
     connected: !!c,
     status: c ? `Connected to ${c.name}${c.transport === 'ble' ? ' · Bluetooth' : ''}` : 'Not connected',
@@ -492,7 +495,7 @@ function updateTray() {
     lookAgain: () => actions.refreshDiscovery(),
     again: again ? { label: `${g.status.busy ? 'Take Over' : 'Connect to'} ${g.hosts[0].name}`, click: () => actions.connectAgain() } : null,
     disconnect: c ? { label: phone ? 'Disconnect Phone' : `Disconnect ${name}`, click: () => actions.disconnect() } : null,
-    update: updates && updates.status.available ? { label: `TwinDesk ${updates.status.latest} available…`, click: showUpdateWindow } : null,
+    update: updates && updates.status.available ? { label: `DuoDesk ${updates.status.latest} available…`, click: showUpdateWindow } : null,
     rezume: rezumeItems(),
     open: showWindow,
     log: () => require('../shared/applog.js').open(),
@@ -503,7 +506,7 @@ function updateTray() {
 app.whenReady().then(() => {
   if (app.dock) app.dock.hide();
   // Dev runs show Electron's icon otherwise; the built app has it in its bundle.
-  if (app.dock && !app.isPackaged) app.dock.setIcon(path.join(__dirname, '..', 'shared', 'icon', 'teindesk-dark-mac.png'));
+  if (app.dock && !app.isPackaged) app.dock.setIcon(path.join(__dirname, '..', 'shared', 'icon', 'duodesk.png'));
   store.init(app.getPath('userData'));
   settings = store.loadSettings();
   id = identity.load(settings);
@@ -713,7 +716,7 @@ app.whenReady().then(() => {
   };
   svc.remote = () => svc.phoneRemote || null;
   peer.on(`t:${P.T.REMOTE_HELLO}`, () => !svc.phoneRemote && peer.current && peer.current.os === P.OS.ANDROID
-    && peer.sendToClient({ t: P.T.REMOTE_STATE, allowed: false, off: true, why: 'Remote is off on this computer: turn it on in TwinDesk’s Remote page there' }));
+    && peer.sendToClient({ t: P.T.REMOTE_STATE, allowed: false, off: true, why: 'Remote is off on this computer: turn it on in DuoDesk’s Remote page there' }));
   svc.loadRemote();
   // ReZume: what's in use here goes on on the other device, and theirs here (shared/rezume.js), its
   // offers in the Dock (a Dock icon of their app, dockstub.js), the menu bar and a notification.

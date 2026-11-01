@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // Explorer's right-click › TwinDesk (Show more options on Windows 11): one menu with
 //   Send to phone        files and folders: the Send files flow, as Send to's shortcut (sendto.js)
 //   Import from phone    a folder, or a folder's background: Phone Files opens, and what's saved
@@ -43,7 +44,7 @@ class Explorer {
     const icon = `"${esc(exe)},0"`;
     const key = (root, ...sub) => '[' + ['HKEY_CURRENT_USER', 'Software', 'Classes', root, 'shell', 'TwinDesk', ...sub].join('\\') + ']';
     const menu = (root, items) => [
-      key(root), '"MUIVerb"="TwinDesk"', `"Icon"=${icon}`, '"SubCommands"=""', '',
+      key(root), '"MUIVerb"="DuoDesk"', `"Icon"=${icon}`, '"SubCommands"=""', '',
       ...items.flatMap(([id, label, args, ico]) => [
         key(root, 'shell', id), `"MUIVerb"="${label}"`, `"Icon"="${esc(ico)}"`, '',
         key(root, 'shell', id, 'command'), `@=${cmd(args)}`, '',

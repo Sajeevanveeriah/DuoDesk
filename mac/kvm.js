@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // Shared cursor + keyboard: the state machine for both roles.
 //   driving: this Mac's input goes to the PC (owner)
 //   driven:  the PC's input drives this Mac
@@ -440,6 +441,13 @@ class Kvm extends EventEmitter {
   _onHelper(name, ev) {
     const k = this.cfg;
     switch (name) {
+      case 'fileHandoff': {
+        // Native release-to-send is a file copy, never a cursor crossing while held.
+        if (this.mode !== 'home' || !this.fileSend.dragOn || !this.server.current || !Array.isArray(ev.paths)) return;
+        const paths = ev.paths.filter((p) => typeof p === 'string' && p.startsWith('/')).slice(0, 1000);
+        if (paths.length) this.fileSend.sendBatch(paths, 'send');
+        break;
+      }
       case 'edge':
         // The helper already captures (it started at the edge); undo that if we can't cross.
         if (!this._canDrive() || !k.mouse || this.locked || (this.blockEdge && this.blockEdge())) {

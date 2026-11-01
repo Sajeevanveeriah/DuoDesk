@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // Notifications tab: the other computer's notifications here as Windows
 // toasts from TwinDesk, and this PC's on the other computer (read from Windows' notification
 // database by the helper). Two direction cards, then the apps seen sending.
@@ -37,7 +38,7 @@ UI.tab({
       pair.update(s);
       note.set('');
       hideSw.set(n.hideText);
-      recvRow.setHint(n.receive && n.shown ? n.shown + ' shown' : 'As desktop notifications, from TwinDesk');
+      recvRow.setHint(n.receive && n.shown ? n.shown + ' shown' : 'As desktop notifications, from DuoDesk');
       sendRow.setHint(n.readable === false ? 'Can’t read this desktop’s notifications (dbus-monitor missing)'
         : !n.send ? '' : !connected ? 'Also switches it on the other computer' : n.sent ? n.sent + ' sent' : 'As native notifications there');
 

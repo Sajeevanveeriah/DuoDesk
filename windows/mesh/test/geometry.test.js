@@ -1,0 +1,28 @@
+// DuoDesk GPL-3.0. Geometry/display exchange without Electron or network.
+'use strict';
+const assert = require('node:assert/strict');
+const { EventEmitter } = require('node:events');
+const { MeshGeometry } = require('../geometry');
+const { T } = require('../../../shared/protocol');
+const events = new Map(), life = new Map(), sent = [];
+const screen = new EventEmitter();
+let displays = [{ id: 1, bounds: { x: 0, y: 0, width: 1920, height: 1080 }, scaleFactor: 1 }];
+screen.getAllDisplays = () => displays;
+const bus = { on: (t, fn) => events.set(t, fn), onPeer: (t, fn) => life.set(t, fn), connectedIds: () => ['short'], send: (id, message) => sent.push({ id, message }) };
+let changed = 0;
+const geometry = new MeshGeometry({ bus, screen, edges: () => ({ right: 'short' }), changed: () => changed++ });
+assert.equal(geometry.zones(['right']).right, null, 'legacy unknown geometry stays compatible');
+events.get(T.KVM_DISPLAYS)({ displays: [{ id: 'short', x: 0, y: 0, w: 1920, h: 540, scale: 1 }] }, 'short');
+assert.equal(geometry.zones(['right']).right, '0.2500-0.7500', 'only centred vertical overlap crosses');
+assert.equal(geometry.toPeer('short', 'right', 0.25), 0);
+assert.equal(geometry.toPeer('short', 'right', 0.75), 1);
+displays = [{ id: 1, bounds: { x: 0, y: 0, width: 1920, height: 540 }, scaleFactor: 1 }];
+screen.emit('display-metrics-changed');
+assert.equal(geometry.zones(['right']).right, '0.0000-1.0000');
+assert.equal(sent.at(-1).message.displays[0].h, 540, 'monitor resize broadcasts updated geometry');
+life.get('closed')('short');
+assert.equal(geometry.zones(['right']).right, null, 'disconnected peer geometry is cleared');
+assert.ok(changed >= 3);
+geometry.destroy();
+assert.equal(screen.listenerCount('display-metrics-changed'), 0, 'shutdown removes display listeners');
+console.log('PASS mesh geometry exchange, overlap, offset, resize and cleanup');

@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // Main process: lifecycle, windows, tray, IPC and the state pushed to the main window.
 const { app, BrowserWindow, Tray, Menu, nativeImage, nativeTheme, Notification, shell, globalShortcut } = require('electron');
 const { Updates } = require('../shared/updates.js');
@@ -73,7 +74,9 @@ app.commandLine.appendSwitch('force-fieldtrials', 'WebRTC-ForceSendPlayoutDelay/
 if (!app.commandLine.hasSwitch('user-data-dir')) app.setPath('userData', path.join(app.getPath('appData'), 'MacShare'));
 require('../shared/applog.js').start(app); // console.* and crashes into the log folder, both apps
 // Multi-device switched on (multi.js, docs/multi-device.md): mesh/main.js runs instead of everything below.
-if (require('./multi').on()) return void require('./mesh/main.js');
+const multiDeviceMode = require('./multi').on();
+console.log('[startup] mode=' + (multiDeviceMode ? 'multi-device' : 'pair'));
+if (multiDeviceMode) return void require('./mesh/main.js');
 if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
@@ -94,7 +97,7 @@ if (!app.requestSingleInstanceLock()) {
 // twindesk:copy?code=… (a one-time code's Copy on a toast), twindesk:open?app=… (the toast itself:
 // the app on the phone), twindesk:go?tab=… (a page). True: it was one of them.
 function openLink(argv) {
-  if (explorer && explorer.handle(argv)) return true; // Explorer's TwinDesk › Import / Capture from phone
+  if (explorer && explorer.handle(argv)) return true; // Explorer's DuoDesk › Import / Capture from phone
   const a = (argv || []).find((x) => /^twindesk:/i.test(String(x)));
   if (!a) return false;
   let u;
@@ -149,7 +152,7 @@ let sendTo = null;
 let pairSync = null;
 let fileRecv = null;
 let notifs = null;
-let explorer = null; // Explorer's right-click › TwinDesk (explorer.js)
+let explorer = null; // Explorer's right-click › DuoDesk (explorer.js)
 let devctl = null; // Overview's controls of the other device, and this PC's for it (shared/devctl.js)
 let chats = null; // Messages' chat apps from a phone, kept per phone (shared/chats.js)
 let fileClip = null;
@@ -464,7 +467,7 @@ function startPhone(server, pairing) {
   phoneViews.on('change', pushState);
   // Remote off: its page hears so; on, PhoneRemote answers instead.
   pl.on(`t:${P.T.REMOTE_HELLO}`, () => !phoneRemote && pl.current && pl.current.os === P.OS.ANDROID
-    && pl.sendToClient({ t: P.T.REMOTE_STATE, allowed: false, off: true, why: 'Remote is off on this computer: turn it on in TwinDesk’s Remote page there' }));
+    && pl.sendToClient({ t: P.T.REMOTE_STATE, allowed: false, off: true, why: 'Remote is off on this computer: turn it on in DuoDesk’s Remote page there' }));
   loadRemote();
   viaWifi(phoneViews, 'openScreen', 'phone');
   viaWifi(phoneViews, 'openApp', 'phone');
@@ -1163,7 +1166,7 @@ function createMainWindow(tab) {
     y: b.y,
     minWidth: 720,
     minHeight: 480,
-    title: 'TwinDesk',
+    title: 'DuoDesk',
     icon: path.join(__dirname, 'assets', 'icon.png'),
     backgroundColor: nativeTheme.shouldUseDarkColors ? '#2b2b2e' : '#e9e9ee',
     show: false,
@@ -1234,7 +1237,7 @@ function checkTaskbar() {
 
 function createTray() {
   tray = new Tray(trayIcon());
-  tray.setToolTip('TwinDesk');
+  tray.setToolTip('DuoDesk');
   tray.on('click', showMain);
   checkTaskbar();
   updateTray();
@@ -1249,7 +1252,7 @@ function updateTray(s = buildState()) {
   const sharing = s.pcScreen.mode !== 'off';
   const found = s.found.filter((d) => !s.peer || d.id !== s.peer.id);
   const rtt = connected && s.link.rtt != null ? ' · ' + s.link.rtt + ' ms' : '';
-  tray.setToolTip('TwinDesk: ' + statusLine(s));
+  tray.setToolTip('DuoDesk: ' + statusLine(s));
   // Rebuild only when something in the menu changed (state pushes are frequent).
   const watching = screen.sentAccept === true;
   const host = s.paired && s.paired.macName;
@@ -1295,7 +1298,7 @@ function updateTray(s = buildState()) {
     lookAgain: () => discovery.probe(),
     again: again ? { label: (s.link.busy ? 'Take Over ' : 'Connect to ') + host, click: () => link.connect(true) } : null,
     disconnect: connected ? { label: 'Disconnect ' + name, click: () => link.disconnect() } : null,
-    update: s.updates && s.updates.available ? { label: 'Download TwinDesk ' + s.updates.latest + '…', click: showUpdateWindow } : null,
+    update: s.updates && s.updates.available ? { label: 'Download DuoDesk ' + s.updates.latest + '…', click: showUpdateWindow } : null,
     rezume: rezumeItems(),
     open: showMain,
     log: () => require('../shared/applog.js').open(),

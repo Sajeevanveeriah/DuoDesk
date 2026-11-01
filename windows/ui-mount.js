@@ -1,5 +1,6 @@
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
-// Mount tab: the phone's storage as a drive in Explorer (phonedrive.js). Off, TwinDesk doesn't look
+// DuoDesk modifications, 2026. GPL-3.0.
+// Mount tab: the phone's storage as a drive in Explorer (phonedrive.js). Off, DuoDesk doesn't look
 // for the phone or touch its files at all; on, only Mount does, and only while it's mounted.
 // Port of mac/ui-mount.js.
 'use strict';

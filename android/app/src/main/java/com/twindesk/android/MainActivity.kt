@@ -283,7 +283,7 @@ private fun Identity(core: Core, v: Int, logo: Int) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Logo(logo)
         Column(Modifier.padding(start = 12.dp)) {
-            Text("TwinDesk", fontWeight = FontWeight.Bold, fontSize = 19.sp, color = pal.text)
+            Text("DuoDesk", fontWeight = FontWeight.Bold, fontSize = 19.sp, color = pal.text)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 val h = core.host
                 Dot(when { h != null -> pal.good; core.link.pair != null || core.link.state == "connecting" -> pal.warn; else -> pal.faint }, 7)
@@ -539,7 +539,7 @@ private fun OverviewPage(core: Core, v: Int, connection: Boolean) {
                 SwitchRow("Sound", soundHint(core), core.sync.get("audio", "out"), first = true) { core.sync.set("audio", "out", it) }
                 SoundStart(core)
                 SwitchRow("Clipboard", "", core.sync.get("clipboard", "out")) { core.sync.set("clipboard", "out", it) }
-                SwitchRow("Notifications", if (core.notifs.hasAccess) "" else if (!core.notifs.supported) "Needs TwinDesk with notifications (Notifications page)" else "Needs Notification access (General)", core.sync.get("notifs", "out")) { core.sync.set("notifs", "out", it) }
+                SwitchRow("Notifications", if (core.notifs.hasAccess) "" else if (!core.notifs.supported) "Needs DuoDesk with notifications (Notifications page)" else "Needs Notification access (General)", core.sync.get("notifs", "out")) { core.sync.set("notifs", "out", it) }
                 // Calls, Messages and Photos, when the computer has them: what each needs is asked for as it's switched on.
                 if (core.hub.peer) for (what in listOf("calls", "messages", "media", "files")) {
                     val perm = core.hub.perm(what)
@@ -548,7 +548,7 @@ private fun OverviewPage(core: Core, v: Int, connection: Boolean) {
                         Hub.label(what),
                         when {
                             perm == "none" && what == "files" -> "Needs Android 11 or later"
-                            perm == "none" -> "Needs TwinDesk with notifications (Notifications page)"
+                            perm == "none" -> "Needs DuoDesk with notifications (Notifications page)"
                             on && perm == "ask" && what == "files" -> "Allow All files access: switch it on again"
                             on && perm == "ask" -> "Tap Allow on the prompt, or switch it on again"
                             on && perm == "partial" && what == "media" -> "Only the photos you chose"
@@ -589,7 +589,7 @@ private fun OverviewPage(core: Core, v: Int, connection: Boolean) {
             MacRow(f.name, "${if (f.os == "mac") "Mac" else if (f.os == "linux") "Linux" else "PC"} · ${if (f.address.startsWith("ble:") || f.address.startsWith("blp:")) "Bluetooth" else f.address}", first) { Secondary("Pair") { core.pair(f) } }
             first = false
         }
-        if (first) MacRow("Looking for computers…", if (core.bleOn && core.ble.allowed()) "Open TwinDesk on your computer (same Wi-Fi, or Bluetooth on)" else "Open TwinDesk on your computer (same Wi-Fi)", true)
+        if (first) MacRow("Looking for computers…", if (core.bleOn && core.ble.allowed()) "Open DuoDesk on your computer (same Wi-Fi, or Bluetooth on)" else "Open DuoDesk on your computer (same Wi-Fi)", true)
         BleSwitch(core, "Allow Nearby devices on the General page")
         var addr by remember { mutableStateOf("") }
         Box(Modifier.padding(start = 16.dp).fillMaxWidth().height(1.dp).background(pal.line))
@@ -640,14 +640,14 @@ fun scanQr(ctx: android.content.Context) {
         val opts = com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions.Builder()
             .setBarcodeFormats(com.google.mlkit.vision.barcode.common.Barcode.FORMAT_QR_CODE).build()
         com.google.mlkit.vision.codescanner.GmsBarcodeScanning.getClient(ctx, opts).startScan()
-            .addOnSuccessListener { b -> if (!QrActivity.open(ctx, b.rawValue.orEmpty())) android.widget.Toast.makeText(ctx, "That isn’t a TwinDesk pairing code", android.widget.Toast.LENGTH_SHORT).show() }
+            .addOnSuccessListener { b -> if (!QrActivity.open(ctx, b.rawValue.orEmpty())) android.widget.Toast.makeText(ctx, "That isn’t a DuoDesk pairing code", android.widget.Toast.LENGTH_SHORT).show() }
             .addOnFailureListener { openCamera(ctx) }
     }.isSuccess
     if (!ok) openCamera(ctx)
 }
 
 private fun openCamera(ctx: android.content.Context) {
-    android.widget.Toast.makeText(ctx, "Scan it with the camera app: it opens TwinDesk", android.widget.Toast.LENGTH_LONG).show()
+    android.widget.Toast.makeText(ctx, "Scan it with the camera app: it opens DuoDesk", android.widget.Toast.LENGTH_LONG).show()
     runCatching { ctx.startActivity(Intent(android.provider.MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
 }
 
@@ -719,15 +719,15 @@ private fun HubHead(core: Core, v: Int, what: String, title: String, desc: Strin
         if (it && perm != "ok") hub.askHere(what)
     }
     if (core.host == null) { NotConnected(core, v); return false }
-    if (!hub.peer) { Note("TwinDesk on $name needs to be up to date for $title.", "warn"); return false }
+    if (!hub.peer) { Note("DuoDesk on $name needs to be up to date for $title.", "warn"); return false }
     when {
         perm == "none" && what == "files" -> Note("File access needs Android 11 or later. Mount on $name works through ADB instead.", "warn")
-        perm == "none" -> Note("$title needs TwinDesk with notifications: Android doesn’t let downloaded apps read texts. $name installs it once wireless debugging is set up (its Phone page › Install). Your settings and pairing stay.", "warn")
+        perm == "none" -> Note("$title needs DuoDesk with notifications: Android doesn’t let downloaded apps read texts. $name installs it once wireless debugging is set up (its Phone page › Install). Your settings and pairing stay.", "warn")
         !on -> Note("Off. Switch it on here or on $name.")
         perm == "ask" -> {
             Note(
                 when (what) {
-                    "files" -> "Allow All files access, so $name can browse this phone’s storage. TwinDesk reads and writes the files itself: no ADB."
+                    "files" -> "Allow All files access, so $name can browse this phone’s storage. DuoDesk reads and writes the files itself: no ADB."
                     "media" -> "Allow photos and videos, so $name can show them."
                     else -> "Allow what $title needs: ${Hub.wanted(what).size} permissions, asked for once."
                 },
@@ -762,14 +762,14 @@ private fun CallsPage(core: Core, v: Int) {
         MacRow(
             "Bluetooth",
             when {
-                !allowed -> "Allow Nearby devices so TwinDesk sees this phone’s pairing with $name"
+                !allowed -> "Allow Nearby devices so DuoDesk sees this phone’s pairing with $name"
                 !bt.optBoolean("radio", true) -> "Bluetooth is off on this phone"
                 bt.optBoolean("bonding") -> "Pairing… Confirm the code here and on $name"
                 bt.optBoolean("forget") -> "Forget $name in Bluetooth settings here (Android keeps the old pairing for itself), then pair them again there"
                 bonded -> "Paired with $name: calls can play there"
                 bt.optBoolean("le") -> "Paired over Bluetooth LE only, which can’t carry a call: Forget, then pair them again in Bluetooth settings"
                 !hub.btKnown -> "Waiting for $name…"
-                else -> "Not paired with $name over classic Bluetooth: pair them in Bluetooth settings (here: Pair new device, or Add device on $name). TwinDesk connects once they are"
+                else -> "Not paired with $name over classic Bluetooth: pair them in Bluetooth settings (here: Pair new device, or Add device on $name). DuoDesk connects once they are"
             },
             first = true,
         ) {
@@ -810,7 +810,7 @@ private fun FileAccessPage(core: Core, v: Int) {
     WifiGate(core, "Phone Files on $name")
     if (HubHead(core, v, "files", "File access", "Browse this phone’s storage on ${them(core)}, and copy files both ways.")) MacCard("On $name") {
         MacRow("Phone Files", "Folders, Save to $name, Upload, New folder, Rename, Delete", first = true)
-        MacRow("No ADB", "TwinDesk reads and writes the files itself with All files access. Mount on $name is the ADB way")
+        MacRow("No ADB", "DuoDesk reads and writes the files itself with All files access. Mount on $name is the ADB way")
         MacRow("Where", "On USB, Wi-Fi or Wi-Fi Direct. Over Bluetooth $name says so, with Connect with Wi-Fi Direct")
     }
     if (core.host != null) SharedFolders(core, v)
@@ -890,7 +890,7 @@ private fun CameraPage(core: Core, v: Int) {
     val shown = if (cam.on) cam.facing ?: facing else facing
     PageHead(
         "Camera",
-        "This device’s camera on $name: in TwinDesk there, and as a camera its apps can pick.",
+        "This device’s camera on $name: in DuoDesk there, and as a camera its apps can pick.",
         master = if (host != null && (canShow || cam.on)) cam.on else null,
         onMaster = { adb.cameraOnComputer(it, facing) },
     )
@@ -917,15 +917,15 @@ private fun CameraPage(core: Core, v: Int) {
             when {
                 !canShow -> "Needs wireless debugging: set it up from Overview"
                 cam.error.isNotEmpty() -> "It stopped: ${cam.error}"
-                cam.on && cam.virtual -> "Running as “TwinDesk Camera”: in Zoom, Teams or the browser there, choose only that one"
-                cam.on -> "In TwinDesk’s Camera page there. Its Virtual camera makes it a camera other apps can pick"
+                cam.on && cam.virtual -> "Running as “DuoDesk Camera”: in Zoom, Teams or the browser there, choose only that one"
+                cam.on -> "In DuoDesk’s Camera page there. Its Virtual camera makes it a camera other apps can pick"
                 else -> "Off"
             },
         )
     }
     Note(
-        if (cam.virtual) "$name’s Virtual camera is on: apps there see this camera as “TwinDesk Camera”."
-        else "Turn on Virtual camera in TwinDesk’s Camera page on $name to use this camera as a real camera in its apps (Zoom, Teams, the browser…).",
+        if (cam.virtual) "$name’s Virtual camera is on: apps there see this camera as “DuoDesk Camera”."
+        else "Turn on Virtual camera in DuoDesk’s Camera page on $name to use this camera as a real camera in its apps (Zoom, Teams, the browser…).",
     )
 }
 
@@ -1032,9 +1032,9 @@ private fun CursorPage(core: Core, v: Int) {
     val adbMissing = !viaPhone && !adbOn
     Note(
         when {
-            viaPhone && !core.input.supported -> "This build of TwinDesk can’t use Accessibility: Android’s Play Protect blocks downloaded apps that can. " +
-                "Use wireless debugging, or once it’s set up, $name installs TwinDesk with notifications, which can (on $name, Phone page › Install)."
-            viaPhone && !core.input.on -> "Allow TwinDesk in Accessibility, so $name’s pointer can tap and type here."
+            viaPhone && !core.input.supported -> "This build of DuoDesk can’t use Accessibility: Android’s Play Protect blocks downloaded apps that can. " +
+                "Use wireless debugging, or once it’s set up, $name installs DuoDesk with notifications, which can (on $name, Phone page › Install)."
+            viaPhone && !core.input.on -> "Allow DuoDesk in Accessibility, so $name’s pointer can tap and type here."
             adbMissing -> "$name moves the pointer here through wireless debugging, which is off. Or choose Accessibility below."
             !core.pointer.allowed -> "Allow “Show the pointer” in General › Setup to see $name’s pointer here."
             !core.kvm.linked -> "Cursor sharing is off. Double-tap ${core.kvm.hotkey} on $name to turn it on."
@@ -1058,7 +1058,7 @@ private fun CursorPage(core: Core, v: Int) {
         MacRow("Through", when {
             core.input.via == "auto" && core.input.effective == "adb" -> "Automatic: ADB, wireless debugging is on"
             core.input.via == "auto" -> "Automatic: Accessibility until wireless debugging is on"
-            core.input.via == "phone" -> "Accessibility: TwinDesk taps and types itself, over Wi-Fi, Wi-Fi Direct or Bluetooth. No developer options"
+            core.input.via == "phone" -> "Accessibility: DuoDesk taps and types itself, over Wi-Fi, Wi-Fi Direct or Bluetooth. No developer options"
             else -> "ADB (wireless debugging): full control. Over Bluetooth without it, Accessibility"
         }) {
             SingleChoiceSegmentedButtonRow {
@@ -1102,7 +1102,7 @@ private fun KeyboardPage(core: Core, v: Int) {
     if (host == null) return NotConnected(core, v)
     Note(if (on) "$name’s keyboard types here while its pointer is here." else "Keyboard sharing is off: only the pointer comes here.")
     MacCard("Hotkey") {
-        MacRow(core.kvm.hotkey, "Double-tap on $name to turn cursor sharing on or off. Set it in TwinDesk on $name", first = true)
+        MacRow(core.kvm.hotkey, "Double-tap on $name to turn cursor sharing on or off. Set it in DuoDesk on $name", first = true)
     }
     MacCard {
         DirHead(name, false, me, true)
@@ -1136,10 +1136,10 @@ private fun RezumePage(core: Core, v: Int) {
     }
     val p = r.peer
     Note(when {
-        p == null -> "$name has no ReZume yet: update TwinDesk there."
+        p == null -> "$name has no ReZume yet: update DuoDesk there."
         !p.optBoolean("on") -> "ReZume is off on $name: turn it on there too."
-        InputService.running == null && core.adb.wifiDebugging -> "Ready. $name sees this phone’s apps through wireless debugging; for its pages too, turn on TwinDesk’s Accessibility."
-        InputService.running == null -> "$name’s pages and documents come here. For this phone’s to go there, turn on TwinDesk’s Accessibility (or wireless debugging, for apps)."
+        InputService.running == null && core.adb.wifiDebugging -> "Ready. $name sees this phone’s apps through wireless debugging; for its pages too, turn on DuoDesk’s Accessibility."
+        InputService.running == null -> "$name’s pages and documents come here. For this phone’s to go there, turn on DuoDesk’s Accessibility (or wireless debugging, for apps)."
         r.offered.isNotEmpty() -> "Offered to $name: ${r.offered}"
         else -> "Ready."
     }, if (p == null || !p.optBoolean("on")) "warn" else "info")
@@ -1175,10 +1175,10 @@ private fun RemotePage(core: Core, v: Int) {
     PageHead("Remote", "Use this device as $name’s touchpad and keyboard, or as a gamepad.")
     if (core.host == null) {
         NotConnected(core, v)
-        return BtPadCard(core) // works without TwinDesk on the computer
+        return BtPadCard(core) // works without DuoDesk on the computer
     }
-    if (r.unsupported) Note("$name doesn’t answer the remote: update TwinDesk there.", "warn")
-    else if (r.allowed == false) Note(r.why.ifEmpty { "$name doesn’t take input from here. On $name, turn on Remote in TwinDesk." }, "warn")
+    if (r.unsupported) Note("$name doesn’t answer the remote: update DuoDesk there.", "warn")
+    else if (r.allowed == false) Note(r.why.ifEmpty { "$name doesn’t take input from here. On $name, turn on Remote in DuoDesk." }, "warn")
     val open = { mode: String -> ctx.startActivity(Intent(ctx, RemoteActivity::class.java).putExtra("mode", mode)) }
     MacCard {
         MacRow("Touchpad and keyboard", "Slide to move $name’s pointer, tap to click, hold to right click, two fingers to scroll. Keys and media keys too", first = true) {
@@ -1220,7 +1220,7 @@ private fun BtPadCard(core: Core) {
     }
     val state = pad?.state ?: "off"
     MacCard("As a Bluetooth gamepad") {
-        SwitchRow("As a Bluetooth gamepad", "A game controller for any computer over Bluetooth, the Mac too: no driver and no TwinDesk needed there. " +
+        SwitchRow("As a Bluetooth gamepad", "A game controller for any computer over Bluetooth, the Mac too: no driver and no DuoDesk needed there. " +
             "Games that take any controller (Steam, emulators); Xbox-only games on Windows want Real gamepad on the PC instead", on, first = true) { v ->
             if (!v) core.btPad.setOn(false)
             else if (!core.btPad.allowed()) ask.launch(BtPad.permissions())
@@ -1260,7 +1260,7 @@ private fun ClipboardPage(core: Core, v: Int) {
     }
     MacCard {
         DirHead(me, true, name, false)
-        SwitchRow("Copies here go to $name", "While TwinDesk is open, or always with wireless debugging", core.sync.get("clipboard", "out"), first = true) { core.sync.set("clipboard", "out", it) }
+        SwitchRow("Copies here go to $name", "While DuoDesk is open, or always with wireless debugging", core.sync.get("clipboard", "out"), first = true) { core.sync.set("clipboard", "out", it) }
         if (core.host != null) MacRow("Send the clipboard now", "Also: the Send clipboard tile in Quick Settings") { Secondary("Send") { core.clip.sendCurrent(true) } }
     }
     // Pictures both ways, this device's screenshots among them (Clip.kt, Screenshots.kt). Finding
@@ -1273,10 +1273,10 @@ private fun ClipboardPage(core: Core, v: Int) {
     }
     MacCard("Pictures") {
         SwitchRow("Pictures", "Pictures and screenshots up to 10 MB, both ways, with Clipboard › Pictures on on $name too. Not over Bluetooth", clip.picturesOn, first = true) { clip.setPictures(it); shots.watch() }
-        if (clip.picturesOn && core.host != null && !clip.peerImages) MacRow("Off on $name", "Turn on Clipboard › Pictures there (TwinDesk 2.3 or later)")
+        if (clip.picturesOn && core.host != null && !clip.peerImages) MacRow("Off on $name", "Turn on Clipboard › Pictures there (DuoDesk 2.3 or later)")
         if (clip.picturesOn) {
             SwitchRow("Screenshots go to $name", "Each one taken here lands on $name’s clipboard: paste it there", shots.on) { shots.setOn(it) }
-            if (shots.on && !shots.canRead) MacRow("Allow photo access", "TwinDesk looks only for new screenshots") { Primary("Allow") { askPhotos.launch(shots.permission) } }
+            if (shots.on && !shots.canRead) MacRow("Allow photo access", "DuoDesk looks only for new screenshots") { Primary("Allow") { askPhotos.launch(shots.permission) } }
             if (shots.lastSent.isNotEmpty()) MacRow("Last screenshot sent", shots.lastSent)
         }
     }
@@ -1300,8 +1300,8 @@ private fun NotificationsPage(core: Core, v: Int) {
     PageHead("Notifications", "See each other’s notifications.")
     if (core.host == null) NotConnected(core, v)
     if (!core.notifs.supported) Note(
-        "This build of TwinDesk can’t read this device’s notifications: Android’s Play Protect blocks downloaded apps that can. " +
-            "$name installs TwinDesk with notifications for you once wireless debugging is set up: on $name, Phone page › Install. Your settings and pairing stay.",
+        "This build of DuoDesk can’t read this device’s notifications: Android’s Play Protect blocks downloaded apps that can. " +
+            "$name installs DuoDesk with notifications for you once wireless debugging is set up: on $name, Phone page › Install. Your settings and pairing stay.",
         "warn",
     )
     else if (!core.notifs.hasAccess) Note("Allow Notification access so this device’s notifications can go to $name.", "warn")
@@ -1420,7 +1420,7 @@ private fun SoundPage(core: Core, v: Int) {
 private fun soundHint(core: Core) = when {
     core.sound.on -> "Playing there (captured here: Stop in the notification)"
     core.sound.error.isNotEmpty() -> core.sound.error
-    else -> "Through wireless debugging, else TwinDesk captures it (Start, each time)"
+    else -> "Through wireless debugging, else DuoDesk captures it (Start, each time)"
 }
 
 // The computer is waiting for the capture: Start here, as in the notification.
@@ -1440,6 +1440,19 @@ private fun GeneralPage(core: Core, v: Int) {
     val name = them(core)
     var dev by remember { mutableStateOf(core.store.deviceName) }
     PageHead("General", "")
+    val recovered = java.io.File(ctx.filesDir, "pcshare-recovery").listFiles()?.filter { it.isFile }.orEmpty()
+    if (recovered.isNotEmpty()) MacCard("Recovered edits") {
+        recovered.forEachIndexed { index, file ->
+            MacRow(file.name, "Kept because saving to the computer did not finish. Export a copy before removing this app.", first = index == 0) {
+                Secondary("Export") {
+                    val uri = androidx.core.content.FileProvider.getUriForFile(ctx, "${ctx.packageName}.files", file)
+                    val share = Intent(Intent.ACTION_SEND).setType(Files.mimeOf(file.name)).putExtra(Intent.EXTRA_STREAM, uri)
+                        .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    ctx.startActivity(Intent.createChooser(share, "Export recovered edit"))
+                }
+            }
+        }
+    }
     MacCard("This device") {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Name", color = pal.text, fontSize = 15.sp)
@@ -1467,7 +1480,7 @@ private fun GeneralPage(core: Core, v: Int) {
     // Every permission and feature in one place: each is asked for only when switched on elsewhere,
     // or here.
     MacCard("Allow") {
-        if (Build.VERSION.SDK_INT >= 33) Setup("Notifications", "Files arriving, invites from $name, and TwinDesk staying connected",
+        if (Build.VERSION.SDK_INT >= 33) Setup("Notifications", "Files arriving, invites from $name, and DuoDesk staying connected",
             ctx.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == android.content.pm.PackageManager.PERMISSION_GRANTED, "Allow") {
             askNotify.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
@@ -1479,12 +1492,12 @@ private fun GeneralPage(core: Core, v: Int) {
             "files" to "This device’s storage and shared folders on $name, no ADB",
         )) {
             val perm = core.hub.perm(what)
-            if (perm == "none") MacRow(Hub.label(what), if (what == "files") "Needs Android 11 or later" else "Needs TwinDesk with notifications ($name installs it)")
+            if (perm == "none") MacRow(Hub.label(what), if (what == "files") "Needs Android 11 or later" else "Needs DuoDesk with notifications ($name installs it)")
             else Setup(Hub.label(what), if (perm == "partial") "Some access is missing: $hint" else hint, perm == "ok", "Allow") { core.hub.askHere(what) }
         }
         if (core.notifs.supported) Setup("Notification access", "To show this device’s notifications on $name", core.notifs.hasAccess, "Allow") {
             ctx.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
-        } else MacRow("Notification access", "Comes with TwinDesk with notifications, which $name installs (its Phone page)")
+        } else MacRow("Notification access", "Comes with DuoDesk with notifications, which $name installs (its Phone page)")
         Setup("Run in the background", "So $name can reach this device any time", pm.isIgnoringBatteryOptimizations(ctx.packageName), "Allow") {
             @Suppress("BatteryLife")
             ctx.startActivity(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:${ctx.packageName}")))
@@ -1510,8 +1523,8 @@ private fun GeneralPage(core: Core, v: Int) {
         SwitchRow(
             "Turn off wireless debugging when disconnected",
             when {
-                !core.adb.canEnable -> "Once paired with $name: off again 2 minutes after it disconnects, when TwinDesk switched it on"
-                core.adb.autoOffEnabled -> "2 minutes after $name disconnects, when TwinDesk switched it on, and on again as it connects. Switched on by you, it stays on"
+                !core.adb.canEnable -> "Once paired with $name: off again 2 minutes after it disconnects, when DuoDesk switched it on"
+                core.adb.autoOffEnabled -> "2 minutes after $name disconnects, when DuoDesk switched it on, and on again as it connects. Switched on by you, it stays on"
                 else -> "Wireless debugging stays on after $name disconnects"
             },
             core.adb.autoOffEnabled, enabled = core.adb.canEnable,
@@ -1520,7 +1533,7 @@ private fun GeneralPage(core: Core, v: Int) {
             askNearby.launch(nearbyPerms)
         }
         if (core.input.supported) Setup("Mouse and keyboard", "Accessibility: $name’s cursor on this phone without wireless debugging, on any network. Only needed when ADB isn’t used", core.input.on, "Allow") { core.input.openSettings() }
-        else MacRow("Mouse and keyboard", "Through wireless debugging. Without it: comes with TwinDesk with notifications, which $name installs (its Phone page)")
+        else MacRow("Mouse and keyboard", "Through wireless debugging. Without it: comes with DuoDesk with notifications, which $name installs (its Phone page)")
         Setup("Show the pointer", "Draws $name’s pointer over other apps", core.pointer.allowed, "Allow") {
             ctx.startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${ctx.packageName}")))
         }
@@ -1558,7 +1571,7 @@ private fun AboutPage(core: Core, v: Int) {
     @Suppress("UNUSED_EXPRESSION") v // redraw on every Core change (Compose skips unread parameters)
     Column(Modifier.fillMaxWidth().padding(top = 24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         Logo(110)
-        Text("TwinDesk", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = pal.text, modifier = Modifier.padding(top = 10.dp))
+        Text("DuoDesk", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = pal.text, modifier = Modifier.padding(top = 10.dp))
         Text("Version ${BuildConfig.VERSION_NAME}", color = pal.muted)
         Text("Use your computer and this device as one desk.", color = pal.muted, modifier = Modifier.padding(top = 6.dp, bottom = 20.dp))
     }
@@ -1567,7 +1580,7 @@ private fun AboutPage(core: Core, v: Int) {
     val u = core.updates
     MacCard("Updates") {
         MacRow(
-            "TwinDesk",
+            "DuoDesk",
             when {
                 u.checking -> "Checking…"
                 u.error.isNotEmpty() -> "Couldn’t check: ${u.error}"
@@ -1583,10 +1596,10 @@ private fun AboutPage(core: Core, v: Int) {
         }
         SwitchRow("Check automatically", "Looks for new releases on GitHub every few hours", u.auto) { u.auto = it }
     }
-    MacCard("Made by") {
+    MacCard("Built on TwinDesk") {
         MacRow("Inuka Asith", "inukaasith.vercel.app", first = true) { Secondary("Portfolio") { open("https://inukaasith.vercel.app") } }
         MacRow("Source code", "github.com/InukaAsith/TwinDesk") { Secondary("GitHub") { open("https://github.com/InukaAsith/TwinDesk") } }
-        MacRow("Releases", "New versions for every platform") { Secondary("Open") { open("https://github.com/InukaAsith/TwinDesk/releases") } }
+        MacRow("DuoDesk releases", "New versions for every platform") { Secondary("Open") { open("https://github.com/Sajeevanveeriah/DuoDesk/releases") } }
     }
     MacCard("License") {
         MacRow("GNU General Public License v3", "Free and open source. Copyright © 2026 inukaasith", first = true) {

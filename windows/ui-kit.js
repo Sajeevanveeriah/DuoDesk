@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // Main window UI kit (window.UI): same API as the Mac's mac/control.js so the tab scripts match;
 // app.js boots the shell. Controls are built once per tab; render(state) only updates values,
 // so a state push never interrupts a drag, an open menu or keyboard focus.
@@ -328,7 +329,7 @@ const UI = {
 
   // Small device glyph by OS: 'mac' | 'win' | 'linux' | 'android'.
   osClass: (os) => (os === 'mac' ? 'mac' : os === 'android' ? 'phone' : 'pc'),
-  // An app's icon in a grid: its own, else (none, or it doesn't load) TwinDesk's.
+  // An app's icon in a grid: its own, else (none, or it doesn't load) DuoDesk's.
   appIcon(src) {
     const fallback = 'assets/sidebar-icon@2x.png';
     const img = UI.el('img', { src: src || fallback, alt: '' });

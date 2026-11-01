@@ -1,26 +1,28 @@
 {
   "name": "macshare-mac",
-  "productName": "TwinDesk",
-  "version": "2.5.0-beta.1",
-  "description": "TwinDesk — the Mac side: pairing, secure link, screen sharing and shared mouse/keyboard with a Windows PC.",
+  "productName": "DuoDesk",
+  "version": "2.5.0",
+  "description": "DuoDesk - one mouse, one keyboard and one clipboard across your devices.",
   "license": "GPL-3.0",
   "main": "main.js",
   "private": true,
   "scripts": {
     "start": "electron .",
-    "build:helper": "../mac-helper/build.sh 2>&1 | tail -30",
+    "build:helper": "sh ../mac-helper/build.sh",
     "probe": "node dev/probe.js",
-    "dist": "./build-app.sh",
-    "dist:x64": "./build-app.sh x64",
-    "dist:arm64": "./build-app.sh arm64",
-    "dmg": "./build-dmg.sh",
-    "dmg:intel": "./build-app.sh x64 && ./build-dmg.sh"
+    "dist": "node scripts/package.cjs arm64",
+    "dist:x64": "node scripts/package.cjs x64",
+    "dist:arm64": "node scripts/package.cjs arm64",
+    "dmg": "node scripts/package.cjs arm64",
+    "dmg:intel": "node scripts/package.cjs x64",
+    "test": "node test/preload.test.cjs && node test/geometry.test.cjs"
   },
   "dependencies": {
     "ws": "^8.22.0"
   },
   "devDependencies": {
     "@electron/packager": "^20.3.0",
-    "electron": "^44.7.0"
+    "electron": "^44.7.0",
+    "electron-builder": "26.18.0"
   }
 }

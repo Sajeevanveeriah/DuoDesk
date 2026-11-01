@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // Network drives: this PC shares one folder with the Mac (a hidden,
 // network-only local account with a random password, made once with administrator rights), and
 // maps the Mac's shared folder as a drive. Credentials only travel over the paired link; ours are
@@ -187,7 +188,7 @@ class Smb {
   _label(addr, share) {
     const mac = this.link.snapshot().link.macName || 'the other computer';
     const key = 'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\MountPoints2\\##' + addr + '#' + share;
-    exec('reg.exe', ['add', key, '/v', '_LabelFromReg', '/t', 'REG_SZ', '/d', 'TwinDesk on ' + mac, '/f']).catch(() => {});
+    exec('reg.exe', ['add', key, '/v', '_LabelFromReg', '/t', 'REG_SZ', '/d', 'DuoDesk on ' + mac, '/f']).catch(() => {});
   }
 
   async _unmount(share) {

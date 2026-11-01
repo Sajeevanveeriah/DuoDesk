@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith, Erdoğan Yeşil. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // Throwaway TLS certificate for the tests: made once per test process with openssl into a temp
 // folder, which is deleted when the process exits. No key material is kept in the repository.
 'use strict';
@@ -15,12 +16,14 @@ let cached = null;
 // Returns {pfx: Buffer, passphrase, fp} (fp: normalized sha256 fingerprint).
 function loadTestCert() {
   if (cached) return cached;
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'twindesk-test-'));
+  const artifacts = path.join(__dirname, '..', 'artifacts');
+  fs.mkdirSync(artifacts, { recursive: true });
+  const dir = fs.mkdtempSync(path.join(artifacts, 'tls-'));
   const key = path.join(dir, 'k.pem');
   const cert = path.join(dir, 'c.pem');
   const pfx = path.join(dir, 't.pfx');
   const env = { ...process.env, MSYS_NO_PATHCONV: '1' };
-  process.on('exit', () => fs.rmSync(dir, { recursive: true, force: true }));
+  // Keep synthetic test evidence in this project; no user directories or cleanup deletion.
   execFileSync('openssl', ['req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-keyout', key, '-out', cert, '-days', '2', '-subj', '/CN=Test'], { env, stdio: 'ignore' });
   execFileSync('openssl', ['pkcs12', '-export', '-out', pfx, '-inkey', key, '-in', cert, '-passout', 'pass:x'], { env, stdio: 'ignore' });
   const fp = P.normFingerprint(new crypto.X509Certificate(fs.readFileSync(cert, 'utf8')).fingerprint256);

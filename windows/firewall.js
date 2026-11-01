@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // Portions adapted from Beamer (https://github.com/kalkman-code/beamer), Copyright (C) Kalkman Code,
 // GPL-3.0. Changed: JS port of win_app/firewall_win.py (status script + interpret), simplified to
 // one program rule and no ports.
@@ -33,8 +34,8 @@ function interpret(payload) {
   let message = 'OK';
   if (!lan.length) message = 'No network connection.';
   else if (publicNets.length) message = 'The network "' + publicNets[0].alias + '" is Public, so Windows blocks {name}’s broadcasts.';
-  else if (blocked) message = 'A Windows Firewall rule blocks TwinDesk.';
-  else if (!covered) message = 'TwinDesk isn’t allowed through Windows Firewall on this network.';
+  else if (blocked) message = 'A Windows Firewall rule blocks DuoDesk.';
+  else if (!covered) message = 'DuoDesk isn’t allowed through Windows Firewall on this network.';
   return { ok: lan.length > 0 && !publicNets.length && !blocked && covered, message, publicNets, blocked, covered, admin: payload.admin !== false, unread };
 }
 
@@ -60,7 +61,7 @@ async function fix(status, exe = process.execPath) {
       Blocked: !!(status && status.blocked),
     });
   } catch (e) {
-    if (status && status.admin === false) throw new Error('it needs an administrator’s password. Ask someone with one to click Fix, or to reinstall TwinDesk (the installer adds the rule)');
+    if (status && status.admin === false) throw new Error('it needs an administrator’s password. Ask someone with one to click Fix, or to reinstall DuoDesk (the installer adds the rule)');
     throw e;
   }
   return check(exe);

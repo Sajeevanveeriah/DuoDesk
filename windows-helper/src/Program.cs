@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // macshare-winhelper: JSON lines on stdin (commands) / stdout (replies and events),
 // "Helper interface". The main thread runs the WinForms message loop (hooks and raw input need
 // it); a reader thread hands each line to it; one writer thread does all stdout I/O.
@@ -14,8 +15,8 @@ using System.Threading;
 using System.Windows.Forms;
 
 // The name Windows shows for this process: Location's prompt and its list of apps, Task Manager.
-[assembly: AssemblyTitle("TwinDesk")]
-[assembly: AssemblyProduct("TwinDesk")]
+[assembly: AssemblyTitle("DuoDesk")]
+[assembly: AssemblyProduct("DuoDesk")]
 
 namespace MacShare
 {
@@ -51,6 +52,7 @@ namespace MacShare
             injector = new Injector();
             stylus = new Stylus(injector);
             injector.Moved = capture.FeedReturn;
+            capture.RemoteButtonDown = delegate { return injector.ButtonsDown; };
             injector.Stops = capture.ReturnStops;
             smoother = new Smoother(delegate (double x, double y) { invoker.BeginInvoke((MethodInvoker)delegate { injector.Move(x, y); }); });
             HideCursor.Restore(); // in case a crash left the cursors blank
@@ -188,6 +190,15 @@ namespace MacShare
             return vks;
         }
 
+        static void SetZones(Dictionary<string, List<double[]>> target, Dictionary<string, object> command)
+        {
+            target.Clear();
+            var zones = Json.Obj(command, "zonesBySide");
+            if (zones == null) return;
+            foreach (string side in new[] { "left", "right", "top", "bottom" })
+                if (zones.ContainsKey(side)) target[side] = Capture.ParseZones(Json.Str(zones, side, null));
+        }
+
         static void Dispatch(string line)
         {
             Dictionary<string, object> c;
@@ -220,6 +231,7 @@ namespace MacShare
                         capture.CooldownMs = (int)Json.Num(c, "cooldownMs", 250);
                         capture.DwellMs = (int)Json.Num(c, "dwellMs", 150);
                         capture.EdgeZones = Capture.ParseZones(Json.Str(c, "zones", null));
+                        SetZones(capture.EdgeZonesBySide, c);
                         capture.HotkeyVks = HotkeyVks(Json.Str(c, "hotkey", "AltRight"));
                         capture.DriveOther = Json.Bool(c, "driveOther", false);
                         capture.EdgeKeyboard = Json.Bool(c, "keyboard", true);
@@ -241,6 +253,7 @@ namespace MacShare
                         break;
                     case "armReturn":
                         capture.ReturnZones = Capture.ParseZones(Json.Str(c, "zones", null));
+                        SetZones(capture.ReturnZonesBySide, c);
 #if MULTI
                         // sides: every side with a device behind it; without it, the one side.
                         List<string> retSides = Json.Strs(c, "sides");

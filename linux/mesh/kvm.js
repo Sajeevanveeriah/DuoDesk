@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith, Erdoğan Yeşil. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // Shared cursor and keyboard: state machine, Linux side, both roles (this computer drives a device, or a
 // device drives this computer). windows/mesh/kvm.js with ../kvm.js's Linux parts: gestures are done with
 // the desktop's own shortcuts; file drags out go through the helper's edge strip (X11, drop.c).
@@ -15,6 +16,7 @@
 
 const P = require('../../shared/protocol.js');
 const E = require('../../shared/kvm-edges.js');
+const { MeshGeometry } = require('./geometry');
 const blepipe = require('../../shared/blepipe.js');
 const { KvmMoves } = require('../../shared/kvm-moves.js');
 const { KeyLayout } = require('../../shared/keylayout.js');
@@ -101,6 +103,7 @@ class Kvm {
       this.dragPolicyBy.set(from, m.accept !== false);
       this.applyConfig();
     });
+    this.geometry = new MeshGeometry({ bus, screen: (opts.electron || require('electron')).screen, edges: () => this.edges, changed: () => { this.applyConfig(); if (this.mode === 'driven') this._armReturn(); } });
     bus.onPeer('welcome', (id) => this._onPeerUp(id));
     bus.onPeer('closed', (id) => this._onPeerDown(id));
     // Onto Bluetooth with Over Bluetooth off: everything home; back on Wi-Fi it crosses again.
@@ -112,7 +115,7 @@ class Kvm {
       this.applyConfig();
       // A restarted helper has lost its state: nothing is captured or armed any more.
       if (this.mode === 'driving') this._release('');
-      else if (this.mode === 'driven') this._drivenHome('TwinDesk’s helper restarted', true);
+      else if (this.mode === 'driven') this._drivenHome('DuoDesk’s helper restarted', true);
     });
     helper.on('event', (name, msg) => this._onHelper(name, msg));
     helper.on('exit', () => this.onChange());
@@ -331,6 +334,7 @@ class Kvm {
       dwellMs: P.KVM_EDGE_DWELL_MS,
       // the same sides for linux-helper, whose JSON reader skips arrays: its -multi build reads this one
       sideList: sides.join(','),
+      zonesBySide: this.geometry ? this.geometry.zones(sides) : {},
       dragFiles: this._dragsOut(sides.length ? this.edges[sides[0]] : null), // the edge strip that picks up file drags (X11)
       shortcuts: !!f.shortcuts && this.hub.bus.connectedIds().length > 0, // the copy/paste-files shortcuts at home (fclip.js), while connected
       copyKeys: f.copyKeys,
@@ -432,6 +436,13 @@ class Kvm {
 
   _onHelper(name, msg) {
     switch (name) {
+      case 'fileHandoff': {
+        const paths = Array.isArray(msg.paths) ? msg.paths.filter((p) => typeof p === 'string').slice(0, 1000) : [];
+        const id = E.SIDES.includes(msg.side) ? this.edges[msg.side] : this.hub.selectedId;
+        if (this.mode !== 'home' || !id || !this._connectedTo(id) || !this._dragsOut(id) || !this.hub.select(id)) break;
+        if (paths.length) this.fileDrop.sendBatch(paths, 'send');
+        break;
+      }
       case 'edge':
         this._onEdge(msg);
         break;
@@ -508,7 +519,7 @@ class Kvm {
     // A file/folder drag crossed: the other device shows it as its own drag; the data follows.
     const paths = msg.drag && Array.isArray(msg.drag.paths) && this._dragsOut(id) ? msg.drag.paths.filter((p) => typeof p === 'string') : [];
     const drag = paths.length ? this.fileDrop.prepareDrag(paths) : null;
-    this._take({ side: P.opposite(side), offset: msg.offset, ...(drag ? { drag: { count: drag.count } } : {}) }, id);
+    this._take({ side: P.opposite(side), offset: this.geometry.toPeer(id, side, msg.offset), ...(drag ? { drag: { count: drag.count } } : {}) }, id);
     if (drag) { // order: kvm.take, drag.start, then the files
       this.fileDrop.beginDrag(drag);
       this.dragPending = true;
@@ -668,7 +679,7 @@ class Kvm {
     console.log('[kvm] return watch on: ' + this._returnSides().join(',') + ' (partner ' + this.partner + ')');
     const sides = this._returnSides();
     // side: the first one, for a helper from before several sides (it watches that one; a newer one reads sides)
-    this.helper.send('armReturn', { on: true, side: sides[0] || null, sides, sideList: sides.join(','), resistancePx: this.cfg.resistancePx });
+    this.helper.send('armReturn', { on: true, side: sides[0] || null, sides, sideList: sides.join(','), zonesBySide: this.geometry ? this.geometry.zones(sides) : {}, resistancePx: this.cfg.resistancePx });
   }
 
   // The helper saw the pointer leave this computer (driven) through `side`. Back to the driver: kvm.home as
@@ -680,9 +691,9 @@ class Kvm {
     const to = side ? this.layoutSync.across(side) : null;
     console.log('[kvm] return ' + side + ' -> ' + (to || 'nobody') + ' (partner ' + this.partner + ')');
     // The way back: the side of the device that drives us (judged by who is there, not only by the side we expect).
-    if (!side || to === this.partner || side === this.layoutSync.sideTo(this.partner)) return this._sendHome(msg.offset);
+    if (!side || to === this.partner || side === this.layoutSync.sideTo(this.partner)) return this._sendHome(this.geometry.toPeer(this.partner, side, msg.offset));
     if (to && to !== this.partner && this._canRelay(to)) return this._relayTo(to, side, Number(msg.offset) || 0);
-    if (to && to !== this.partner) this._send(this.partner, { t: T.KVM_NEXT, route: this.peerRoute, to, side, offset: Number(msg.offset) || 0 });
+    if (to && to !== this.partner) this._send(this.partner, { t: T.KVM_NEXT, route: this.peerRoute, to, side, offset: this.geometry.toPeer(to, side, Number(msg.offset) || 0) });
     this._armReturn();
   }
 
@@ -885,6 +896,7 @@ class Kvm {
   }
 
   shutdown() {
+    if (this.geometry) this.geometry.destroy();
     if (this.mode === 'driving') this._release('');
     else if (this.mode === 'driven') this._drivenHome('', false);
     this.helper.stop();

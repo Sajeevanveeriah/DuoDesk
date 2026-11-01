@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // This computer's Wi-Fi for a session through Bluetooth (shared/netlink.js), through NetworkManager
 // (nmcli; the Linux side of windows/wifi.js): hosting a network the other side joins (an access
 // point with NetworkManager's shared IPv4, as Windows' Wi-Fi Direct access point), or joining the
@@ -27,8 +28,8 @@ const path = require('path');
 
 const P = require('../shared/protocol.js');
 
-const HOST = 'TwinDesk host';
-const JOIN = 'TwinDesk link';
+const HOST = 'DuoDesk host';
+const JOIN = 'DuoDesk link';
 const JOIN_MS = 45000;
 const TOOL = process.env.TWINDESK_WIFIAP
   || (fs.existsSync('/run/wrappers/bin/twindesk-wifiap') ? '/run/wrappers/bin/twindesk-wifiap' : '/usr/local/libexec/twindesk-wifiap');

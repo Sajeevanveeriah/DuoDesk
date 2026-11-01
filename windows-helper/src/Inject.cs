@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // Portions adapted from Beamer (https://github.com/kalkman-code/beamer), Copyright (C) Kalkman Code,
 // GPL-3.0. Changed: C# port of the SendInput absolute-move and scan-code key approach.
 // SendInput injection of k.* events. Every input carries
@@ -15,6 +16,7 @@ namespace MacShare
     {
         readonly HashSet<int> heldScans = new HashSet<int>();
         readonly HashSet<int> heldButtons = new HashSet<int>();
+        public bool ButtonsDown { get { return heldButtons.Count != 0; } }
         double fx, fy;              // sub-pixel remainder of relative moves (physical px)
         double wheelRem, hwheelRem; // remainder of wheel units
         // Layout shortcuts from the other computer are done here (NextLayout): Win+Space (Ctrl+Space

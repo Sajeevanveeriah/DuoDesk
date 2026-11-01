@@ -1,10 +1,15 @@
 // TwinDesk — Copyright (C) 2026 inukaasith, Erdoğan Yeşil. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // The small API the main window gets from the main process.
 const { contextBridge, ipcRenderer, webUtils } = require('electron');
 
 const call = (name) => (...args) => ipcRenderer.invoke(name, ...args);
 
 contextBridge.exposeInMainWorld('macshare', {
+  camera: call('camera'),
+  phoneCamera: call('phoneCamera'),
+  phoneListCameras: call('phoneListCameras'),
+  onCamPreview: (fn) => ipcRenderer.on('vcam:preview', (_e, buf) => fn(buf)),
   getState: call('getState'),
   onState: (fn) => ipcRenderer.on('state', (_e, s) => fn(s)),
   onShowUpdate: (fn) => ipcRenderer.on('show-update', () => fn()),

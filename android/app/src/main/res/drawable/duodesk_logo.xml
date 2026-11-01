@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Original DuoDesk mark: two desks joined by one continuous line. GPL-3.0. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="64dp" android:height="64dp" android:viewportWidth="64" android:viewportHeight="64">
+    <path android:fillColor="#121821" android:pathData="M16,2H48Q62,2 62,16V48Q62,62 48,62H16Q2,62 2,48V16Q2,2 16,2Z" />
+    <path android:fillColor="@android:color/transparent" android:strokeColor="#B9DAD8"
+        android:strokeWidth="3" android:strokeLineCap="round" android:strokeLineJoin="round"
+        android:pathData="M14,21H27V39H14Z M37,21H50V39H37Z M20.5,39V45H43.5V39 M27,30H37" />
+</vector>

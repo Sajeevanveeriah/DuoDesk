@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // "Open at login": an XDG autostart entry, ~/.config/autostart/twindesk.desktop, that
 // starts TwinDesk in the tray (--hidden). It starts the AppImage itself when run from one (its
 // path is in $APPIMAGE), else the installed binary, else (development) electron with this folder.
@@ -38,7 +39,7 @@ function set(on) {
   fs.writeFileSync(f, [
     '[Desktop Entry]',
     'Type=Application',
-    'Name=TwinDesk',
+    'Name=DuoDesk',
     'Comment=Share mouse, keyboard, clipboard and screens with your other computer',
     'Exec=' + command().map(quote).join(' '),
     'Icon=twindesk',

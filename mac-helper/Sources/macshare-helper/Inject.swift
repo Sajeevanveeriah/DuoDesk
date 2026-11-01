@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // Input injection with CGEvent: absolute stream input (`input`, a phone's stylus in Pen.swift) and releaseAll.
 // Relative KVM input (`inject`) is in InjectRelative.swift.
 // Every injected event is marked with eventSourceUserData = 0x4D53 so our own tap can skip it.
@@ -56,7 +57,7 @@ final class Injector {
     let now = ProcessInfo.processInfo.systemUptime
     if now - lastActivity < 1 { return }
     lastActivity = now
-    IOPMAssertionDeclareUserActivity("TwinDesk remote input" as CFString, kIOPMUserActiveLocal, &activityID)
+    IOPMAssertionDeclareUserActivity("DuoDesk remote input" as CFString, kIOPMUserActiveLocal, &activityID)
   }
 
   private func cgButton(_ b: Int) -> CGMouseButton {

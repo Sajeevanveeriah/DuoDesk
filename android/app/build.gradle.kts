@@ -10,8 +10,8 @@ android {
         applicationId = "com.twindesk.android"
         minSdk = 29 // Android 10: wireless debugging needs 11, everything else works from 10
         targetSdk = 36
-        versionCode = 20491
-        versionName = "2.5.0-beta.1"
+        versionCode = 20500
+        versionName = "2.5.0"
     }
     // Two builds of the same app (same id and signature, so one installs over the other):
     //   standard — what people download: no notification access, SMS or Accessibility service, which
@@ -34,12 +34,22 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = false
-            // Sideloaded from GitHub releases: signed with this machine's debug key until a release key exists.
+            // Local/non-release validation only. Tagged CI requires the durable release key below.
             signingConfig = signingConfigs.getByName("debug")
         }
     }
+    val releaseStore = System.getenv("ANDROID_RELEASE_KEYSTORE")
+    if (!releaseStore.isNullOrBlank()) {
+        signingConfigs.create("duodeskRelease") {
+            storeFile = file(releaseStore)
+            storePassword = requireNotNull(System.getenv("ANDROID_KEYSTORE_PASSWORD"))
+            keyAlias = requireNotNull(System.getenv("ANDROID_KEY_ALIAS"))
+            keyPassword = requireNotNull(System.getenv("ANDROID_KEY_PASSWORD"))
+        }
+        buildTypes.getByName("release").signingConfig = signingConfigs.getByName("duodeskRelease")
+    }
     lint {
-        checkReleaseBuilds = false
+        checkReleaseBuilds = true
     }
     buildFeatures {
         compose = true
@@ -52,6 +62,7 @@ android {
 }
 
 dependencies {
+    testImplementation("junit:junit:4.13.2")
     implementation(platform("androidx.compose:compose-bom:2026.09.00"))
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.ui:ui")

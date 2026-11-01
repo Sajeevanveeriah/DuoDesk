@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // The TwinDesk virtual display (via mac-helper), the display list, and which display is shared.
 // settings.sharing.displayId: null = the TwinDesk virtual display (falls back to the main
 // display when it is off), otherwise an Electron display id (= CGDirectDisplayID).
@@ -73,7 +74,7 @@ class Displays extends EventEmitter {
         const key = JSON.stringify([size.width, size.height, !!size.hiDPI, v.hz || 60]);
         if (this.virtualId !== null && key === this.virtualKey && screen.getAllDisplays().some((d) => d.id === this.virtualId)) return;
         const r = await this.helper.request('createDisplay', {
-          width: size.width, height: size.height, hiDPI: !!size.hiDPI, hz: v.hz || 60, name: 'TwinDesk',
+          width: size.width, height: size.height, hiDPI: !!size.hiDPI, hz: v.hz || 60, name: 'DuoDesk',
         });
         this.virtualId = r.displayId;
         this.virtualKey = key;
@@ -113,7 +114,7 @@ class Displays extends EventEmitter {
     const primary = screen.getPrimaryDisplay().id;
     return screen.getAllDisplays().map((d) => ({
       id: d.id,
-      label: d.id === this.virtualId ? 'TwinDesk (virtual)' : d.label || (d.internal ? 'Built-in display' : `Display ${d.id}`),
+      label: d.id === this.virtualId ? 'DuoDesk (virtual)' : d.label || (d.internal ? 'Built-in display' : `Display ${d.id}`),
       width: d.size.width,
       height: d.size.height,
       pixelWidth: Math.round(d.size.width * d.scaleFactor),

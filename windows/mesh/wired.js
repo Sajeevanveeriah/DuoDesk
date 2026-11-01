@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith, Erdoğan Yeşil. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // A phone on a USB cable: the whole session goes through it, no Wi-Fi needed, and pairing too.
 // Copy of mac/wired.js.
 //   - adb sees a phone over USB (USB debugging allowed for this computer) with TwinDesk on it:
@@ -27,7 +28,7 @@ const usbadb = require('../../shared/usbadb.js');
 const APP_ID = 'com.twindesk.android';
 const TURN_PORT = 47802;
 const POLL_MS = 2000;
-const RETRY_MS = 15000; // a phone without TwinDesk (or not answering yet) is looked at again after this
+const RETRY_MS = 15000; // a phone without DuoDesk (or not answering yet) is looked at again after this
 const TCPIP_PORT = 5555; // adb's TCP mode, where phone-bridge.js reaches the phone on a direct Wi-Fi link
 
 const isUsb = (serial) => !/[:]/.test(serial) && !serial.startsWith('emulator-') && !serial.includes('._adb-tls');
@@ -205,7 +206,7 @@ class Wired extends EventEmitter {
   async _invite(serial) {
     const has = await this.adb.shell(serial, `pm path ${APP_ID}`, { timeout: 5000 });
     if (!/package:/.test(has.out)) {
-      console.log(`[wired] ${serial}: TwinDesk is not installed on it (pm path said: ${(has.out || has.err || 'nothing').trim().slice(0, 120)}): nothing to connect`);
+      console.log(`[wired] ${serial}: DuoDesk is not installed on it (pm path said: ${(has.out || has.err || 'nothing').trim().slice(0, 120)}): nothing to connect`);
       return;
     }
     await this._tcpip(serial);

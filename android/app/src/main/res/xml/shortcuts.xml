@@ -4,7 +4,7 @@
     <shortcut
         android:shortcutId="adb"
         android:enabled="true"
-        android:icon="@mipmap/ic_launcher"
+        android:icon="@drawable/duodesk_logo"
         android:shortcutShortLabel="@string/sc_adb_short"
         android:shortcutLongLabel="@string/sc_adb_long">
         <intent android:action="android.intent.action.VIEW" android:targetPackage="com.twindesk.android" android:targetClass="com.twindesk.android.AdbActivity" />
@@ -12,7 +12,7 @@
     <shortcut
         android:shortcutId="screen"
         android:enabled="true"
-        android:icon="@mipmap/ic_launcher"
+        android:icon="@drawable/duodesk_logo"
         android:shortcutShortLabel="@string/sc_screen_short"
         android:shortcutLongLabel="@string/sc_screen_long">
         <intent android:action="android.intent.action.VIEW" android:targetPackage="com.twindesk.android" android:targetClass="com.twindesk.android.ViewerActivity" />

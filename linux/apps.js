@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // Mac apps on this computer (copy of windows/apps.js), main-process
 // side: the app list and launching for the Apps tab, and the per-app windows. Those windows are
 // opened by the Monitor 2 renderer (window.open, so they can show the same video stream, cropped);
@@ -117,7 +118,7 @@ class Apps {
   // The name of a Mac app we made a launcher for earlier (the list isn't loaded yet at start).
   _shortcutName(id) {
     try {
-      const m = /^X-TwinDesk-Name=(.*)$/m.exec(fs.readFileSync(this._desktopFile(id), 'utf8'));
+      const m = /^X-DuoDesk-Name=(.*)$/m.exec(fs.readFileSync(this._desktopFile(id), 'utf8'));
       return m ? m[1] : '';
     } catch (_) { return ''; }
   }
@@ -136,10 +137,10 @@ class Apps {
       fs.writeFileSync(this._desktopFile(id), [
         '[Desktop Entry]', 'Type=Application',
         'Name=' + clean(a.name),
-        'Comment=' + clean(a.name + ' on ' + this.peerName() + ' (TwinDesk)'),
+        'Comment=' + clean(a.name + ' on ' + this.peerName() + ' (DuoDesk)'),
         'Exec=' + Apps.command(id).map(q).join(' '),
         ...(icon ? ['Icon=' + icon] : []),
-        'Terminal=false', 'Categories=Network;RemoteAccess;', 'X-TwinDesk-Name=' + clean(a.name), '',
+        'Terminal=false', 'Categories=Network;RemoteAccess;', 'X-DuoDesk-Name=' + clean(a.name), '',
       ].join('\n'));
     } catch (e) {
       this.message = 'Couldn’t add ' + a.name + ' to the app menu: ' + e.message;

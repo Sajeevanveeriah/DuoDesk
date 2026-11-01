@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // Portions adapted from Beamer (https://github.com/kalkman-code/beamer), Copyright (C) Kalkman Code,
 // GPL-3.0. Changed: C# port of win_app/capture_win.py hooks and raw-mouse edge push.
 // Low-level hooks (capture + hotkey), Raw Input (edge push at home, local return-edge motion),
@@ -88,6 +89,11 @@ namespace MacShare
         }
         const int GuardMs = 500;
         DateTime lastCross = DateTime.MinValue, arrivalAt;
+        readonly System.Diagnostics.Stopwatch edgeClock = System.Diagnostics.Stopwatch.StartNew();
+        long crossTick = -1000000, arrivalTick = -1000000, noteTick = -2000;
+        public Func<bool> RemoteButtonDown;
+        public readonly Dictionary<string, List<double[]>> EdgeZonesBySide = new Dictionary<string, List<double[]>>();
+        public readonly Dictionary<string, List<double[]>> ReturnZonesBySide = new Dictionary<string, List<double[]>>();
         string arrivalSide; double arrivalInward;
 
         // hotkey double-tap
@@ -222,7 +228,7 @@ namespace MacShare
                 Native.SetCursorPos(parked.X, parked.Y);
             }
             push = 0;
-            lastCross = DateTime.UtcNow; arrivalSide = null;
+            lastCross = DateTime.UtcNow; crossTick = edgeClock.ElapsedMilliseconds; arrivalSide = null;
         }
 
         // side == null: put the pointer back where capture began.
@@ -281,7 +287,7 @@ namespace MacShare
         public void Arrived(string side)
         {
             lastCross = DateTime.UtcNow;
-            arrivalSide = side; arrivalAt = lastCross; arrivalInward = 0;
+            arrivalSide = side; arrivalAt = lastCross; crossTick = arrivalTick = edgeClock.ElapsedMilliseconds; arrivalInward = 0;
 #if MULTI
             pushes.Clear(); retPushes.Clear();
 #else
@@ -291,17 +297,33 @@ namespace MacShare
 
         // False while a crossing through `side` has to wait (cooldown, arrival guard). `outward`: this
         // move's outward part for that side (negative = inward).
-        bool MayCross(string side, double outward)
+        // One decision path for physical outgoing and injected return movement. Rejections are
+        // observable at monitor edges only, throttled globally across every edge and reason.
+        bool MayCross(string side, double outward, int x, int y, bool returning)
         {
-            DateTime now = DateTime.UtcNow;
-            if ((now - lastCross).TotalMilliseconds < CooldownMs) return false;
-            if (arrivalSide != null && arrivalSide == side)
+            if (arrivalSide == side && outward < 0) arrivalInward -= outward;
+            if (outward <= 0) return false;
+            Rectangle[] monitors = Screens.All();
+            if (!EdgePolicy.AtEdge(monitors, x, y, side)) return false;
+            List<double[]> zones;
+            var bySide = returning ? ReturnZonesBySide : EdgeZonesBySide;
+            if (!bySide.TryGetValue(side, out zones)) zones = returning ? ReturnZones : EdgeZones;
+            long now = edgeClock.ElapsedMilliseconds;
+            string why = EdgePolicy.Refusal(EdgePolicy.Outer(monitors, x, y, side), InZone(zones, x, y, side),
+                AnyButtonDown() || (RemoteButtonDown != null && RemoteButtonDown()) || (returning && HoldReturn),
+                now - crossTick, CooldownMs, arrivalSide == side, now - arrivalTick, arrivalInward, GuardMs);
+            if (why == null) { if (arrivalSide == side) arrivalSide = null; return true; }
+            if (EdgePolicy.ShouldLog(now, ref noteTick))
             {
-                if (outward < 0) arrivalInward -= outward;
-                if ((now - arrivalAt).TotalMilliseconds < GuardMs && arrivalInward < 8) return false;
-                arrivalSide = null;
+                var d = Ev("edgeNote");
+                d["reason"] = why; d["side"] = side; d["x"] = x; d["y"] = y;
+                d["returning"] = returning;
+                var layout = new List<int[]>();
+                foreach (Rectangle m in monitors) layout.Add(new int[] { m.X, m.Y, m.Width, m.Height });
+                d["monitors"] = layout;
+                emit(d);
             }
-            return true;
+            return false;
         }
 
         // The sides where an injected move stops at the edge rather than jump onto a monitor past it.
@@ -527,7 +549,9 @@ namespace MacShare
 
         static bool AnyButtonDown()
         {
-            return (Native.GetAsyncKeyState(0x01) & 0x8000) != 0 || (Native.GetAsyncKeyState(0x02) & 0x8000) != 0 || (Native.GetAsyncKeyState(0x04) & 0x8000) != 0;
+            foreach (int key in new int[] { 0x01, 0x02, 0x04, 0x05, 0x06 })
+                if ((Native.GetAsyncKeyState(key) & 0x8000) != 0) return true;
+            return false;
         }
 
 #if !MULTI
@@ -538,10 +562,9 @@ namespace MacShare
             Native.POINT p;
             Native.GetCursorPos(out p);
             if (retArmed) { FeedReturn(p.x, p.y, dx, dy); return; }
-            if (!DriveOther || Side == null || AnyButtonDown()) { push = 0; return; } // Rule 6: no crossing mid-drag
+            if (!DriveOther || Side == null) { push = 0; return; } // Rule 6: no crossing mid-drag
             double outward = Screens.Outward(Side, dx, dy);
-            if (!MayCross(Side, outward)) { push = 0; return; }
-            if (outward <= 0 || !Screens.OnOuterEdge(p.x, p.y, Side) || !InZone(EdgeZones, p.x, p.y, Side)) { push = 0; return; }
+            if (!MayCross(Side, outward, p.x, p.y, false)) { push = 0; return; }
             DateTime now = DateTime.UtcNow;
             if ((now - lastPush).TotalMilliseconds > 300) push = 0;
             lastPush = now;
@@ -559,10 +582,9 @@ namespace MacShare
         // Injected moves report here too (Injector.Moved): the owner's hand reaches the edge.
         public void FeedReturn(int x, int y, double dx, double dy)
         {
-            if (!retArmed || HoldReturn) return;
+            if (!retArmed) return;
             double outward = Screens.Outward(retSide, dx, dy);
-            if (!MayCross(retSide, outward)) { retPush = 0; return; }
-            if (outward <= 0 || !Screens.OnOuterEdge(x, y, retSide) || !InZone(ReturnZones, x, y, retSide)) { retPush = 0; return; }
+            if (!MayCross(retSide, outward, x, y, true)) { retPush = 0; return; }
             DateTime now = DateTime.UtcNow;
             if ((now - retLast).TotalMilliseconds > 300) retPush = 0;
             retLast = now;
@@ -570,7 +592,7 @@ namespace MacShare
             retPush += outward;
             if (retPush < retResistance || !Dwelt(retResistance, retSince, now)) return;
             retArmed = false;
-            lastCross = now;
+            lastCross = now; crossTick = edgeClock.ElapsedMilliseconds;
             if (Flash != null) Flash.Play(new Point(x, y), retSide, true); // leaving this PC for the Mac
             Dictionary<string, object> d = Ev("return");
             d["offset"] = Math.Round(Screens.Offset(x, y, retSide), 4);

@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // General tab (same cards as the PC's): open at login, the switching popup, firewall self-check
 // (+ Fix), wake from the network, the desktop session and input access (Wayland), the
 // helper, Bluetooth for devices not on this network, this computer and Quit (some desktops have
@@ -58,7 +59,7 @@ UI.tab({
     const media = UI.mediaControlsRow(); // a phone's media controls on the Phone page (shared/ui-nowplaying.js)
     // Appearance: the phone's wallpaper (settings.phone.wallpaper, was on the Phone page).
     const wallSw = UI.switch((v) => api.setPhone({ wallpaper: v }), { label: 'Show the phone’s wallpaper' });
-    const wallRow = UI.row('Show the phone’s wallpaper', 'On its tile and Overview. TwinDesk on the phone reads it once wireless debugging is set up', [wallSw]);
+    const wallRow = UI.row('Show the phone’s wallpaper', 'On its tile and Overview. DuoDesk on the phone reads it once wireless debugging is set up', [wallSw]);
     // Overview: what it shows (settings.ui.overview).
     const parts = [['media', 'Now playing', 'What plays on the phone, with its controls'], ['qs', 'Quick actions', 'Wi-Fi, Bluetooth, torch, Do not disturb and more, with volume and ringer'],
       ['notifs', 'Latest notifications', 'The newest few, with Copy for one-time codes'], ['apps', 'Most used apps', 'The phone’s most used apps this week'],
@@ -83,7 +84,7 @@ UI.tab({
       UI.card('Permissions', [fwRow, btRow, steadyRow]),
       UI.card('This computer', [deviceRow, sessRow, inRow, helperRow]),
       UI.card('Quit', [
-        UI.row('Quit TwinDesk', 'Stops sharing until you open it again', [UI.button('Quit', () => api.quit(), 'small')]),
+        UI.row('Quit DuoDesk', 'Stops sharing until you open it again', [UI.button('Quit', () => api.quit(), 'small')]),
       ], { cls: 'keep-on' }),
     );
 

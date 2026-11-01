@@ -1,3 +1,4 @@
+// DuoDesk modifications: 2026-11-01; original notices retained.
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
 // An Android phone as a drive on the computer: a WebDAV server on 127.0.0.1 in front of the
 // phone's storage (/sdcard), reached through adb, which the system mounts as a network volume
@@ -132,8 +133,8 @@ class PhoneDrive extends EventEmitter {
     this.busy = '';
     if (!this._via()) {
       this.message = this.usb && this.usb.state === 'unauthorized' ? 'Allow USB debugging on the phone (the prompt on its screen), then Mount again.'
-        : this.usb ? 'Turn on USB debugging on the phone (Developer options), or connect it to TwinDesk with wireless debugging.'
-          : 'Plug the phone in with a USB cable (USB debugging on), or connect it to TwinDesk.';
+        : this.usb ? 'Turn on USB debugging on the phone (Developer options), or connect it to DuoDesk with wireless debugging.'
+          : 'Plug the phone in with a USB cable (USB debugging on), or connect it to DuoDesk.';
       return this.emit('change');
     }
     this._set('mounting', '');
@@ -324,7 +325,7 @@ class PhoneDrive extends EventEmitter {
       const auth = Buffer.from(String(req.headers.authorization || '').replace(/^Basic /, ''), 'base64').toString();
       if (auth !== `${this.user}:${this.password}`) {
         req.resume();
-        res.writeHead(401, { 'WWW-Authenticate': 'Basic realm="TwinDesk"', 'Content-Length': 0 });
+        res.writeHead(401, { 'WWW-Authenticate': 'Basic realm="DuoDesk"', 'Content-Length': 0 });
         return res.end();
       }
     }

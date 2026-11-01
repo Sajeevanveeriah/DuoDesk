@@ -1,3 +1,4 @@
+// DuoDesk modifications: 2026-11-01; original notices retained.
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
 // The menu bar / tray menu, laid out the same on every platform (each main.js gives the model).
 // Connected: the status, the way home, Cursor Sharing, then the switches by kind (Mouse and
@@ -31,7 +32,7 @@ function connectTo(m) {
 function template(m) {
   const status = { label: m.status, enabled: false };
   if (!m.connected) {
-    return [status, ...(m.again ? [m.again] : []), connectTo(m), sep, { label: 'Open TwinDesk…', click: m.open }, { label: 'Quit TwinDesk', click: m.quit }];
+    return [status, ...(m.again ? [m.again] : []), connectTo(m), sep, { label: 'Open DuoDesk…', click: m.open }, { label: 'Quit DuoDesk', click: m.quit }];
   }
   return [
     status,
@@ -57,9 +58,9 @@ function template(m) {
     { label: 'Connection', submenu: [...(m.disconnect ? [m.disconnect, sep] : []), connectTo(m)] },
     sep,
     ...(m.update ? [m.update] : []),
-    { label: 'Open TwinDesk…', click: m.open },
+    { label: 'Open DuoDesk…', click: m.open },
     { label: 'Open Log Folder', click: m.log },
-    { label: 'Quit TwinDesk', click: m.quit },
+    { label: 'Quit DuoDesk', click: m.quit },
   ];
 }
 

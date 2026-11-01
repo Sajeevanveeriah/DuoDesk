@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith, Erdoğan Yeşil. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // Share screen to several devices on the Mac: a Stream per connected device on a peer bound to it,
 // a choice of its own per device, the active one answers for the single-stream API.
 // Run with: node mac/test/streams.test.js  (NODE_PATH as in CI)
@@ -17,7 +18,7 @@ const test = (name, fn) => tests.push([name, fn]);
 const MODEL = [
   { id: '1', name: 'Built-in', x: 0, y: 0, w: 3024, h: 1964, scale: 2, primary: true },
   { id: '2', name: 'Left', x: -1920, y: 0, w: 1920, h: 1080, scale: 1, primary: false },
-  { id: '9', name: 'TwinDesk', x: 3024, y: 0, w: 1920, h: 1080, scale: 1, primary: false },
+  { id: '9', name: 'DuoDesk', x: 3024, y: 0, w: 1920, h: 1080, scale: 1, primary: false },
 ];
 
 function fakeStream(log) {

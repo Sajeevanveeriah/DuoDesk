@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith, Erdoğan Yeşil. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // Main process with Multi-device on (docs/multi-device.md): ../main.js starts this file instead of its
 // own code when multi.json says so. Lifecycle, windows, tray, IPC and the state pushed to the main
 // window, as ../main.js, over the mesh (hub.js) instead of one peer. When a fix in ../main.js applies
@@ -101,6 +102,8 @@ let settings = null;
 let device = null;
 let screen = null;
 let clip = null;
+let camShare = null;
+let vcam = null;
 let helper = null;
 let terminal = null;
 let fileDrop = null;
@@ -168,6 +171,7 @@ function start() {
   mesh = new Mesh({ selfId: device.id });
   hub = new Hub({ device, links, mesh });
   link = hub.facade;
+  loadCamera();
   // Overview's controls of the selected device (a computer or a phone), and this computer's for it.
   const { DevCtl } = require('../../shared/devctl.js');
   const { DevLocal } = require('../../shared/devlocal.js');
@@ -184,7 +188,7 @@ function start() {
   });
   startHost();
   autoJoin = new AutoJoin({ hub, enabled: () => settings.mesh.autoJoin !== false, addrs: () => ownAddresses() });
-  clip = new Clip({ bus: hub.bus, mesh, getSettings: () => settings.clipboard, onChange: pushState });
+  clip = new Clip({ bus: hub.bus, mesh, session: (id) => hub.sessions.get(id), getSettings: () => settings.clipboard, onChange: pushState });
   screen = new Screen({
     link,
     clip,
@@ -341,7 +345,7 @@ function start() {
     },
   });
   updates.start();
-  const ipc = setupIpc({ devctl: () => devctl, chats: () => chats, hub, link, discovery, screen, clip, kvm, layoutSync, terminal, sshd, fileDrop, smb, apps, sound, pcScreen, pcApps, peerApps, vdd, notifs, fileClip, wake, updates, settings, save: saveSettings, push: pushState, buildState,
+  const ipc = setupIpc({ setCamera, get camShare() { return camShare; }, get vcam() { return vcam; }, devctl: () => devctl, chats: () => chats, hub, link, discovery, screen, clip, kvm, layoutSync, terminal, sshd, fileDrop, smb, apps, sound, pcScreen, pcApps, peerApps, vdd, notifs, fileClip, wake, updates, settings, save: saveSettings, push: pushState, buildState,
     get phone() { return phone; }, get phoneViews() { return phone ? phone.views : null; }, get phoneDrive() { return phoneDrive; }, connectPhoneDev, cancelPhoneInvite, phoneHub: loadHub,
     get net() { return net; }, applyNet, joinHotspot, applyMesh: () => autoJoin && autoJoin.schedule(),
     checkFirewall, fixFirewall, setStartup, onApp: updateTray });
@@ -414,6 +418,13 @@ function startPhone(server, pairing) {
       ph.wired = wired;
       bridge.wired = wired;
       const views = new PhoneViews({ bridge, phone: ph, getSettings: () => settings, server: scoped, fileSend: fileDrop });
+      views.vcam = vcam;
+      const openCamera = views.openCamera.bind(views);
+      views.openCamera = (options) => {
+        if (camShare) { camShare.setShare(false); camShare.closeView(); }
+        closePhoneCameras(views);
+        return openCamera(options);
+      };
       // On Wi-Fi after Bluetooth, wireless debugging takes a moment more: the window opens once it's up.
       views.onNoAdb = (v) => {
         const c = scoped.current;
@@ -853,6 +864,8 @@ function buildState() {
     keys: settings.keys,
     monitor: settings.monitor,
     clipboard: { ...settings.clipboard, ...clip.view },
+    camera: camShare ? camShare.state : { on: false, watchers: [] },
+    vcam: vcam ? vcam.view() : { checked: true, supported: true, on: false },
     ui: settings.ui,
     app: settings.app,
     version: app.getVersion(),
@@ -930,6 +943,34 @@ function setStartup(on) {
   pushState();
 }
 
+function closePhoneCameras(keep) {
+  if (phone) for (const unit of phone.all || []) if (unit.views && unit.views !== keep)
+    for (const view of unit.views.list()) if (view.kind === 'camera') unit.views.close(view.id);
+}
+
+function loadCamera() {
+  if (camShare || !settings.camera.on) return camShare;
+  const { MeshCamera } = require('../../shared/mesh-camera');
+  const { VirtualCam } = require('../../shared/vcam');
+  vcam = new VirtualCam({ driver: require('../vcam'), cfg: () => settings.camera, save: saveSettings,
+    onChange: pushState, onReady: () => {}, ui: () => mainWin });
+  camShare = new MeshCamera({ hub, cfg: () => settings.camera, save: saveSettings,
+    popup: (kind, text) => hud && hud.show(kind, text), onChange: pushState, beforeStart: () => closePhoneCameras() });
+  if (phone) for (const unit of phone.all || []) if (unit.views) unit.views.vcam = vcam;
+  vcam.check(); camShare.sendPolicy();
+  return camShare;
+}
+
+function setCamera(on) {
+  settings.camera.on = !!on; saveSettings();
+  if (on) { loadCamera(); if (camShare) camShare.sendPolicy(); }
+  else {
+    if (camShare) { camShare.closeView(); camShare.stopSending(); camShare.sendPolicy(); }
+    if (phone) for (const unit of phone.all || []) if (unit.views) for (const view of unit.views.list()) if (view.kind === 'camera') unit.views.close(view.id);
+  }
+  pushState();
+}
+
 function saveSettings() {
   storeSettings(store, settings);
 }
@@ -958,7 +999,7 @@ function createMainWindow() {
     y: b.y,
     minWidth: 720,
     minHeight: 480,
-    title: 'TwinDesk',
+    title: 'DuoDesk',
     icon: path.join(__dirname, '..', 'assets', 'icon.png'),
     backgroundColor: nativeTheme.shouldUseDarkColors ? '#2b2b2e' : '#e9e9ee',
     show: false,
@@ -1028,7 +1069,7 @@ function checkTaskbar() {
 
 function createTray() {
   tray = new Tray(trayIcon());
-  tray.setToolTip('TwinDesk');
+  tray.setToolTip('DuoDesk');
   tray.on('click', showMain);
   checkTaskbar();
   updateTray();
@@ -1043,7 +1084,7 @@ function updateTray(s = buildState()) {
   const sharing = s.pcScreen.mode !== 'off';
   const found = s.found.filter((d) => !s.peer || d.id !== s.peer.id);
   const rtt = connected && s.link.rtt != null ? ' · ' + s.link.rtt + ' ms' : '';
-  tray.setToolTip('TwinDesk: ' + statusLine(s));
+  tray.setToolTip('DuoDesk: ' + statusLine(s));
   // Rebuild only when something in the menu changed (state pushes are frequent).
   const watching = screen.sentAccept === true;
   const host = s.paired && s.paired.macName;
@@ -1087,7 +1128,7 @@ function updateTray(s = buildState()) {
     } })),
     byAddress: () => goTab('connection'),
     lookAgain: () => discovery.probe(),
-    update: s.updates && s.updates.available ? { label: 'Download TwinDesk ' + s.updates.latest + '…', click: showUpdateWindow } : null,
+    update: s.updates && s.updates.available ? { label: 'Download DuoDesk ' + s.updates.latest + '…', click: showUpdateWindow } : null,
     open: showMain,
     log: () => require('../../shared/applog.js').open(),
     quit: () => app.quit(),

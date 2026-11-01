@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // Bluetooth LE (shared/protocol.js P.BLE), for a device that isn't on this PC's network.
 //   BleHost:  this PC hosts the session: a GATT server that advertises the TwinDesk service. A
 //             guest reads INFO, says hello on CTRL, opens a pipe and writes UP; we notify DOWN.
@@ -533,7 +534,7 @@ namespace MacShare
                 session.MaintainConnection = true;
                 fast = Fast(device);
                 GattDeviceServicesResult sr = await device.GetGattServicesForUuidAsync(service, BluetoothCacheMode.Uncached);
-                if (sr.Status != GattCommunicationStatus.Success || sr.Services.Count == 0) throw new Exception("no TwinDesk service (" + sr.Status + ")");
+                if (sr.Status != GattCommunicationStatus.Success || sr.Services.Count == 0) throw new Exception("no DuoDesk service (" + sr.Status + ")");
                 svc = sr.Services[0];
                 ctrl = await Chr(BleIds.Ctrl);
                 up = await Chr(BleIds.Up);

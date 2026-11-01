@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // Shared cursor and keyboard: state machine, Windows side, both roles
 // (this PC drives the Mac, or the Mac drives this PC).
 const P = require('../shared/protocol.js');
@@ -135,7 +136,7 @@ class Kvm {
       this.applyConfig();
       // A restarted helper has lost its state: nothing is captured or armed any more.
       if (this.mode === 'driving') this._release('');
-      else if (this.mode === 'driven') this._drivenHome('TwinDesk’s helper restarted', true);
+      else if (this.mode === 'driven') this._drivenHome('DuoDesk’s helper restarted', true);
     });
     helper.on('event', (name, msg) => this._onHelper(name, msg));
   }
@@ -332,6 +333,14 @@ class Kvm {
 
   _onHelper(name, msg) {
     switch (name) {
+      case 'fileHandoff': {
+        const paths = Array.isArray(msg.paths) ? msg.paths.filter((p) => typeof p === 'string') : [];
+        if (this.mode === 'home' && this.connected && msg.side === this.crossingSide && this._dragsOut() && paths.length) this.fileDrop.sendBatch(paths, 'send');
+        break;
+      }
+      case 'edgeNote':
+        console.log('[kvm] crossing refused ' + JSON.stringify(msg));
+        break;
       case 'edge': // The helper is already capturing
         if (this.mode !== 'home' || !this._canDrive() || !this.cfg.mouse || !this.crossingSide || this.locked) {
           this.helper.send('capture', { on: false });

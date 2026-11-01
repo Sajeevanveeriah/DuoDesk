@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // Desktop geometry for KVM: outer edges, offsets along the crossing side,
 // where to land the pointer, and clamping moves to the desktop. Global CG coordinates
 // (top-left origin, points).
@@ -38,23 +39,12 @@ enum Screens {
   /// True when `p` sits on `side`'s edge of its display (within ~1 pt) and no other display
   /// continues past that edge at that point.
   static func isOuterEdge(_ p: CGPoint, side: String) -> Bool {
-    let ds = displays()
-    guard let d = containing(p, ds) else { return false }
-    let tol: CGFloat = 1.5
-    switch side {
-    case "right":
-      return p.x >= d.maxX - tol && !ds.contains { abs($0.minX - d.maxX) < 1 && p.y >= $0.minY && p.y < $0.maxY }
-    case "left":
-      return p.x <= d.minX + tol - 1 && !ds.contains { abs($0.maxX - d.minX) < 1 && p.y >= $0.minY && p.y < $0.maxY }
-    case "bottom":
-      return p.y >= d.maxY - tol && !ds.contains { abs($0.minY - d.maxY) < 1 && p.x >= $0.minX && p.x < $0.maxX }
-    case "top":
-      return p.y <= d.minY + tol - 1 && !ds.contains { abs($0.maxY - d.minY) < 1 && p.x >= $0.minX && p.x < $0.maxX }
-    default:
-      return false
-    }
+    EdgePolicy.isOuter(Double(p.x), Double(p.y), side: side, displays: edgeRects())
   }
 
+  static func edgeRects() -> [EdgeRect] {
+    displays().map { EdgeRect(x: Double($0.minX), y: Double($0.minY), width: Double($0.width), height: Double($0.height)) }
+  }
   /// 0–1 position of `p` along `side`, measured on the bounding box of all displays.
   static func offset(_ p: CGPoint, side: String) -> Double {
     let u = union()

@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // macshare-calls: this PC as the phone's Bluetooth hands-free (a headset, as a car is), so a call's
 // sound plays on the PC. Windows' one way is PhoneLineTransportDevice, which it lets only an app
 // with a package identity and the phone line capabilities use: this .exe gets one from a sparse
@@ -30,8 +31,8 @@ using Windows.Devices.Bluetooth;
 using Windows.Devices.Enumeration;
 using Windows.Devices.Radios;
 
-[assembly: AssemblyTitle("TwinDesk")]
-[assembly: AssemblyProduct("TwinDesk")]
+[assembly: AssemblyTitle("DuoDesk")]
+[assembly: AssemblyProduct("DuoDesk")]
 
 namespace MacShare
 {

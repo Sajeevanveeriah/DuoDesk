@@ -1,4 +1,5 @@
 // TwinDesk — Copyright (C) 2026 inukaasith, Erdoğan Yeşil. GPL-3.0, see LICENSE.
+// DuoDesk modifications, 2026. GPL-3.0.
 // Clipboard text sharing across every connected device (docs/mesh.md, one pool): a copy goes to the
 // devices that accept clipboard from us, a clip from any device is applied once and relayed by the
 // Pool. Instant and switch modes, the concealed (password) filter, size limit, clip.policy per
@@ -12,6 +13,7 @@ const { EventEmitter } = require('events');
 const P = require('../../shared/protocol.js');
 const { Pool } = require('../../shared/mesh.js');
 const { Latest } = require('../../shared/clipsync.js');
+const { MeshClipImages } = require('../../shared/mesh-clipimages.js');
 
 const PREVIEW = 300; // characters kept per history item for the UI
 
@@ -45,6 +47,9 @@ class Clip extends EventEmitter {
     this.helper = opts.helper || null;
     this.pool = new Pool({ name: 'clip', selfId: this.mesh.selfId, peers: () => clipPeers(this.mesh) });
     this.latest = new Latest({ selfId: this.mesh.selfId }); // the latest copy wins (shared/clipsync.js)
+    this.images = new MeshClipImages({ bus: this.bus, mesh: this.mesh, latest: this.latest,
+      cfg: () => this.cfg, clipboard: this.clipboard, nativeImage: opts.nativeImage,
+      session: opts.session, onChange: () => this._changed() });
     this.lastSync = { sent: null, received: null };
     this.history = []; // newest first: {dir: 'out'|'in', at, text, size, from}
     this.lastSkip = '';
@@ -99,6 +104,7 @@ class Clip extends EventEmitter {
     const c = this.cfg;
     if (c.historySize < this.history.length) this.history.length = c.historySize;
     this._applyWatch();
+    this.images.applySettings();
     this.sendPolicy();
     this._changed();
   }
@@ -117,7 +123,7 @@ class Clip extends EventEmitter {
 
   _sendPolicy(id) {
     const c = this.cfg;
-    this.bus.send(id, { t: P.T.CLIP_POLICY, accept: !!(c.enabled && c.receive) });
+    this.bus.send(id, { t: P.T.CLIP_POLICY, accept: !!(c.enabled && c.receive), images: this.images.accept });
   }
 
   // A copy was made on this Mac (helper event). Instant mode sends new copies only, not what was
@@ -128,6 +134,7 @@ class Clip extends EventEmitter {
   }
 
   destroy() {
+    this.images.destroy();
     this._applyWatch();
   }
 
@@ -160,11 +167,16 @@ class Clip extends EventEmitter {
     // An older copy than the newest this device knows (its own last copy counts): not applied. The pool
     // relayed it anyway, so each device decides for itself.
     if (!this.latest.accept(r.msg, 'text')) return;
+    const accepted = this.latest.cur;
+    await this.images.text();
+    if (this.latest.cur !== accepted) return;
     const text = m.text;
     const name = this._nameOf(r.msg.o, m.on, from);
     this.lastSync.received = text;
     this.seen = text; // so instant mode doesn't publish it back
-    if ((await this._readText()) !== text) this.clipboard.writeText(text);
+    const previous = await this._readText();
+    if (this.latest.cur !== accepted) return;
+    if (previous !== text) this.clipboard.writeText(text);
     this._remember('in', text, name);
     this._changed();
   }
@@ -176,8 +188,11 @@ class Clip extends EventEmitter {
     const c = this.cfg;
     if (!c.enabled || !c.send || !this.bus.connectedIds().length) return;
     if (!this.peerAccepts) return this._skip("A connected device doesn’t accept this Mac’s clipboard");
+    const before = this.latest.cur;
     const text = await this._readText();
-    if (!text || text === this.lastSync.sent || text === this.lastSync.received) return;
+    if (this.latest.cur !== before) return;
+    if (!text) return this.images.offerClipboard(c.skipConcealed && (await this._isConcealed(why)));
+    if (text === this.lastSync.sent || text === this.lastSync.received) return;
     if (c.skipConcealed && (await this._isConcealed(why))) {
       this.lastSync.sent = text; // don't retry this item
       return this._skip('skipped a password (concealed item)');
@@ -187,6 +202,8 @@ class Clip extends EventEmitter {
       this.lastSync.sent = text;
       return this._skip(`skipped ${Math.round(size / 1024)} KB (over ${c.maxKB} KB)`);
     }
+    await this.images.text();
+    if (this.latest.cur !== before) return;
     const stamp = this.latest.copied('text'); // when the copy happened; the pool adds where (o)
     if (!this.pool.publish({ t: P.T.CLIP, text, ts: stamp.ts }).sent.length) return;
     this.lastSync.sent = text;
@@ -234,6 +251,8 @@ class Clip extends EventEmitter {
 
   get view() {
     return {
+      imageSupport: true,
+      peerImages: this.images.peerImages,
       peerAccepts: this.peerAccepts,
       lastSkip: this.lastSkip,
       history: this.history.map((h) => ({

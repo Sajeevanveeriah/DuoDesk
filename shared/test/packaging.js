@@ -1,3 +1,4 @@
+// DuoDesk modifications: 2026-11-01; original notices retained.
 // TwinDesk — Copyright (C) 2026 inukaasith, Erdoğan Yeşil. GPL-3.0, see LICENSE.
 'use strict';
 
@@ -26,11 +27,12 @@ for (const f of required) assert.ok(shared.includes(f), `shared/${f} is required
 // 2. the installers stage the WHOLE shared folder, not a list
 for (const f of ['windows/installer/build.js', 'linux/installer/build.js']) {
   const s = read(f);
-  const perFile = /readdirSync\(path\.join\(ROOT, 'shared'\)\)/.test(s) && /\.\(js\|css\|html\)/.test(s);
-  const wholeDir = /copy\(path\.join\(ROOT, 'shared'\), path\.join\(STAGE, 'shared'\)/.test(s) && /\.\(js\|css\|html\)/.test(s);
+  const perFile = /readdirSync\(path\.join\(ROOT, 'shared'\)\)/.test(s) && /\.\(js\|css\|html(?:\||\))/.test(s);
+  const wholeDir = /copy\(path\.join\(ROOT, 'shared'\), path\.join\(STAGE, 'shared'\)/.test(s) && /\.\(js\|css\|html(?:\||\))/.test(s);
   assert.ok(perFile || wholeDir, `${f} copies every shared/*.js`);
   assert.ok(!/copy\(path\.join\(ROOT, 'shared', '(?!protocol)[a-z-]+\.js'\)/.test(s), `${f} has no hand-kept list of shared files`);
 }
-assert.ok(/cp "\$ROOT"\/shared\/\*\.js/.test(read('mac/build-app.sh')), 'mac/build-app.sh copies every shared/*.js');
+assert.ok(/cp "\$ROOT"\/shared\/\*\.js|rsync -a --exclude test "\$ROOT\/shared\/"/.test(read('mac/build-app.sh')), 'mac/build-app.sh copies every shared/*.js');
+for(const name of ['Manrope.ttf','Manrope-OFL.txt','JetBrainsMono.ttf','JetBrainsMono-OFL.txt']) assert.ok(fs.statSync(path.join(ROOT,'shared','fonts',name)).size>0,`bundled font/notice ${name}`);
 
 console.log(`packaging: passed (${required.size} shared modules required, all staged)`);
