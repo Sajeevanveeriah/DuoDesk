@@ -61,7 +61,7 @@
       Object.assign(img.style, { width: '100%', height: '100%', objectFit: 'contain', display: 'block' });
       const said = el('div');
       Object.assign(said.style, { position: 'absolute', inset: '0', display: 'grid', placeItems: 'center', textAlign: 'center', padding: '0 24px', color: '#a1a1a6' });
-      const box = el('div', { title: 'Open it in a window' }, [img, said]);
+      const box = el('div', { class: 'dd-camera-preview', title: 'Open it in a window' }, [img, said]);
       Object.assign(box.style, { position: 'relative', aspectRatio: '16 / 9', background: '#000', borderRadius: '8px', overflow: 'hidden', cursor: 'pointer', margin: '12px' });
       box.onclick = () => cur && running(cur) && start(true, true);
       let url = '';
@@ -176,8 +176,8 @@
                       : v.message || `Off: the picture stays in DuoDesk. On: it’s also ${vName}, a camera other apps can pick`);
 
         // This computer's own camera (not with a phone).
-        ourCard.hidden = phone;
-        if (!phone) {
+        ourCard.hidden = phone && !meshCamera;
+        if (!phone || meshCamera) {
           share.set(!!c.share);
           shareRow.setHint(c.shareError || (c.share ? '{name} can run it there. A popup says so here when it does' : 'Off: nobody sees it'));
           device.options([{ value: '', label: 'The default camera' }, ...(c.devices || []).map((d) => ({ value: d.id, label: d.label }))]);

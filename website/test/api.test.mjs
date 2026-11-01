@@ -58,7 +58,7 @@ test('privacy headers skip download counting', async () => {
   assert.equal(calls, 0);
 });
 test('status reports actual stable version/platforms or unavailability', async () => {
-  assert.deepEqual(await (await status(fetcher)(req('/api/release-status'))).json(), { available: true, version: '2.5.0', platforms: ['win','mac','linux','android'] });
+  assert.deepEqual(await (await status(fetcher)(req('/api/release-status'))).json(), { available: true, analyticsEnabled: false, version: '2.5.0', platforms: ['win','mac','linux','android'] });
   assert.equal((await (await status(async () => { throw new Error('offline'); })(req('/api/release-status'))).json()).available, false);
 });
 test('view rejects cross-origin/oversize and stores only normalised OS', async () => {
@@ -94,4 +94,11 @@ test('all endpoints enforce HTTP method', async () => {
   assert.equal((await download({fetcher})(req('/api/download?os=win', {method:'POST'}))).status, 405);
   assert.equal((await view({})(req('/api/view'))).status, 405);
   assert.equal((await analytics({})(req('/api/analytics',{method:'POST'}))).status, 405);
+});
+
+test('analytics stays disabled unless explicitly enabled by deployment', async () => {
+ const disabled=await (await status(async()=>{throw new Error('no release');})(req('/api/release-status'))).json();
+ assert.equal(disabled.analyticsEnabled,false);
+ const enabled=await (await status(fetcher,key=>key==='ANALYTICS_ENABLED'?'true':undefined)(req('/api/release-status'))).json();
+ assert.equal(enabled.analyticsEnabled,true);
 });

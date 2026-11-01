@@ -361,7 +361,7 @@
     receive: ['Remote screen', 'The other device’s screen in a window here, to see it and use it from here.'],
     'mac-pc': ['Remote screen', 'The other device’s screen in a window here, to see it and use it from here.'],
     'pc-mac': ['Screen sharing', 'This screen in a window on the other device, to show it or use it from there.'],
-    files: ['File sharing', 'Drag files across the screen edge, take in files sent your way, or share a folder.'],
+    files: ['File sharing', 'Release files at the outer edge to send them, receive files, or share a folder.'],
     terminal: ['Remote terminal', 'Open a terminal on the other computer from this one. No passwords needed.'],
     mount: ['Phone drive', 'The phone’s storage as a drive here, to open and copy its files like any other folder.'],
     calls: ['Phone calls', 'Answer and make your phone’s calls on this computer, and talk through it.'],

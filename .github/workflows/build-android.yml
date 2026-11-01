@@ -1,5 +1,10 @@
 name: Build Android
 on:
+  workflow_dispatch:
+    inputs:
+      release:
+        type: boolean
+        default: false
   workflow_call:
     inputs:
       release:
@@ -31,6 +36,9 @@ jobs:
           distribution: temurin
           java-version: 21
       - uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools'
+          log-accepted-android-sdk-licenses: false
       - uses: ./.github/actions/android-full
         with:
           release: ${{ inputs.release }}

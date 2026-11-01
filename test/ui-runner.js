@@ -37,10 +37,12 @@ async function privacy(page, prefix) {
 (async () => {
   fs.mkdirSync(output, {recursive:true});
   const report = [];
+  const requestedPages=(process.env.DUODESK_QA_PAGES||'').split(',').filter(Boolean);
   for (const os of ['windows','mac','linux']) for (const mode of ['pair','mesh']) for (const scenario of ['desktop','offline','phone']) {
     const prefix = `${os}-${mode}-${scenario}`;
+    if(process.env.DUODESK_QA_SCENARIOS&&!process.env.DUODESK_QA_SCENARIOS.split(',').includes(scenario))continue;
     if (process.env.DUODESK_QA_FILTER && !prefix.includes(process.env.DUODESK_QA_FILTER)) continue;
-    let app, page; const errors = []; const captured = [], skipped = [];
+    let app, page; const errors = []; const captured = [], skipped = [], controlsCaptured = [], controlsSkipped = [], introCaptured = [], controlsScreenshots = {}, watcherScreenshots = [];
     try {
       app = await electron.launch({args:[path.join(__dirname,'window.js')],env:{...process.env,DUODESK_TEST_OS:os,DUODESK_TEST_MODE:mode,DUODESK_TEST_SCENARIO:scenario}});
       page = await app.firstWindow();
@@ -53,12 +55,14 @@ async function privacy(page, prefix) {
       await page.waitForSelector('#nav button');
       await page.waitForFunction(() => window.UI && UI.state && window.DuoDeskHarness);
       await page.waitForTimeout(150);
+      const initialCameraPermission=await page.evaluate(()=>UI.state.camera?.on);
       const tabs = await page.evaluate(mode => UI.tabs.map(tab => {
         const kind = UI.isPhone(UI.state) ? 'phone' : window.SidebarModel ? SidebarModel.selectedKind(UI.state.peers) : 'computer';
         const reason = tab.navHidden ? 'legacy/non-navigation page' : tab.hidden && tab.hidden(UI.state) ? 'not applicable to fixture' : mode==='mesh' && window.SidebarModel && !SidebarModel.sectionVisible(tab.id,kind) ? 'not applicable to selected device kind' : '';
         return {id:tab.id,title:tab.title,reason};
       }),mode);
       for (const tab of tabs) {
+        if(requestedPages.length&&!requestedPages.includes(tab.id))continue;
         if (tab.reason) { skipped.push(tab); continue; }
         await go(page,tab.id);
         await page.waitForTimeout(['media','messages','calls','pfiles'].includes(tab.id)?250:40);
@@ -69,14 +73,43 @@ async function privacy(page, prefix) {
         if (scenario==='phone') {
           const populated={calls:'Alex (demo)',messages:'The mock desk is ready.',pfiles:'Desk-notes.txt'}[tab.id];
           if (populated) assert.ok((await page.locator('#page-'+tab.id).innerText()).includes(populated),tab.id+' contains realistic phone data');
-          if (tab.id==='messages') { await page.locator('#page-messages .hub-thread').first().click(); await page.waitForTimeout(40); }
+          if (tab.id==='messages') { await page.locator('#page-messages .hub-thread').first().click(); await page.waitForTimeout(40); assert.equal(await page.locator('#page-messages .hub-bubble.out').count(),1,'outgoing demo reply renders'); }
           if (tab.id==='media') assert.equal(await page.locator('#page-media .hub-tile').count(),1,'photo grid is populated');
           if (tab.id==='papps') assert.ok((await page.locator('#page-papps').innerText()).includes('Notes'),'phone app grid is populated');
         }
+        await page.locator('#content').evaluate(el=>{el.scrollTop=0;});
         await page.screenshot({type:'jpeg',quality:80,scale:'css',animations:'disabled',path:path.join(output,`${prefix}-${tab.id}.jpg`)});
         captured.push(tab.id);
+        const panel=page.locator('#page-'+tab.id);
+        const dismiss=panel.locator('.feature-art:visible').getByRole('button',{name:'Dismiss',exact:true});
+        const intro=await dismiss.count()>0;
+        if(intro)introCaptured.push(tab.id);
+        if(intro&&scenario==='offline'){
+          controlsSkipped.push({id:tab.id,reason:'Offline feature introduction/gate retained; no feature activation attempted'});
+        }else{
+          if(intro)await dismiss.click();
+          const body=panel.locator('.page-body');
+          assert.ok(await body.isVisible(),tab.id+' settings body is visible after dismissing introduction');
+          if(intro)assert.equal(await panel.locator('.feature-art:visible').count(),0,tab.id+' introduction is actually dismissed');
+          assert.ok(!/\bundefined\b|\bNaN\b/.test(await body.innerText()),tab.id+' controls do not expose missing fixture values');
+          if(tab.id==='camera'){assert.ok((await panel.locator('.dd-camera-preview').boundingBox()).height<=281,'camera preview leaves room for controls');assert.equal(await page.evaluate(()=>UI.state.camera.on),initialCameraPermission,'camera device listing does not change permission');const watchers=await page.evaluate(()=>UI.state.camera.watchers||[]);if(watchers.length){assert.ok(await panel.locator('.dd-camera-watchers').isVisible(),'active camera watchers stay visible regardless of selected device');for(const watcher of watchers)assert.ok((await panel.locator('.dd-camera-watchers').innerText()).includes(watcher.name),'watcher name is shown');const stop=panel.getByRole('button',{name:'Stop',exact:true});assert.ok(await stop.isVisible(),'active camera Stop remains visible with phone selected');await stop.scrollIntoViewIfNeeded();const watcherFile=prefix+'-camera-watchers.jpg';await page.screenshot({type:'jpeg',quality:80,scale:'css',animations:'disabled',path:path.join(output,watcherFile)});watcherScreenshots.push(watcherFile);}}
+          if(mode==='mesh'&&tab.id==='multi'){
+            const expected=await page.evaluate(()=>[{id:UI.state.device.id,name:UI.state.device.name},...UI.state.peers]);
+            for(const device of expected)assert.ok((await body.innerText()).includes(device.name),'layout contains '+device.name);
+            const off=await panel.locator('.lay-tile.off').count();
+            if(scenario!=='offline')assert.equal(off,0,'connected sidebar devices are not offline in the layout');
+          }
+          await page.locator('#content').evaluate(el=>{el.scrollTop=0;});
+          if(scenario==='phone'&&tab.id==='messages'){const composer=await panel.getByLabel('Message',{exact:true}).boundingBox();const status=await page.locator('.dd-status').boundingBox();assert.ok(composer.y+composer.height<status.y,'message composer is above the status bar');}
+          if(tab.id==='camera'&&scenario==='phone'){const start=await panel.getByRole('button',{name:'Start',exact:true}).boundingBox();const status=await page.locator('.dd-status').boundingBox();assert.ok(start&&start.y+start.height<status.y,'phone camera Start is above the status bar');}
+          const controlsFile=`${prefix}-${tab.id}${intro?'-controls':''}.jpg`;
+          if(intro)await page.screenshot({type:'jpeg',quality:80,scale:'css',animations:'disabled',path:path.join(output,controlsFile)});
+          controlsScreenshots[tab.id]=controlsFile;
+          controlsCaptured.push(tab.id);
+        }
       }
-      if(scenario==='phone') for(const required of ['calls','messages','media','pfiles','mirror','papps']) assert.ok(captured.includes(required),'phone scenario actually rendered '+required);
+      if(requestedPages.length)for(const id of requestedPages)assert.ok(captured.includes(id),'requested target page actually rendered '+id);
+      if(scenario==='phone'&&!requestedPages.length) for(const required of ['calls','messages','media','pfiles','mirror','papps']) assert.ok(captured.includes(required),'phone scenario actually rendered '+required);
       if(scenario==='offline') assert.ok(!captured.includes('overview'),'offline overview is explicitly inapplicable');
       await command(page,'Turn off clipboard');
       await page.waitForFunction(() => UI.state.clipboard.enabled === false);
@@ -94,10 +127,10 @@ async function privacy(page, prefix) {
       assert.equal(audit.nativeLaunchAttempts.length,0,'renderer never launches native helpers');
     } catch(error) { errors.push(error.stack || error.message); if(page) await page.screenshot({type:'jpeg',quality:80,scale:'css',animations:'disabled',path:path.join(output,prefix+'-failure.jpg')}).catch(()=>{}); }
     finally { if(app) await app.close().catch(error=>errors.push('Failed to close isolated app: '+error.message)); }
-    const item={os,mode,scenario,host:({win32:'Windows',darwin:'macOS',linux:'Linux'}[process.platform]||process.platform)+'; target renderer simulated',captured,skipped,errors:[...new Set(errors)]};report.push(item);
-    console.log(`${prefix}: ${captured.length} visible pages, ${skipped.length} explicitly skipped, ${item.errors.length} errors`);
+    const item={os,mode,scenario,host:({win32:'Windows',darwin:'macOS',linux:'Linux'}[process.platform]||process.platform)+'; target renderer simulated',requestedPages,captured,controlsCaptured,controlsSkipped,controlsScreenshots,watcherScreenshots,introCaptured,skipped,errors:[...new Set(errors)]};report.push(item);
+    console.log(`${prefix}: ${captured.length} visible pages, ${controlsCaptured.length} controls panels, ${skipped.length} explicitly skipped, ${item.errors.length} errors`);
     if(item.errors.length) console.log(item.errors.join('\n'));
-    fs.writeFileSync(path.join(output,'results-expanded'+(process.env.DUODESK_QA_FILTER?'--'+process.env.DUODESK_QA_FILTER.replace(/[^a-z-]/g,''):'')+'.json'),JSON.stringify(report,null,2));
+    fs.writeFileSync(path.join(output,'results-controls'+(process.env.DUODESK_QA_FILTER?'--'+process.env.DUODESK_QA_FILTER.replace(/[^a-z-]/g,''):'')+(requestedPages.length?'--'+requestedPages.join('-'):'')+'.json'),JSON.stringify(report,null,2));
   }
   process.exitCode=report.some(r=>r.errors.length)?1:0;
 })().catch(error=>{console.error(error);process.exitCode=1;});

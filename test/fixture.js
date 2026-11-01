@@ -1,10 +1,11 @@
 'use strict';
 // Synthetic device state only. This module never reads the OS clipboard, devices or user settings.
 const {normalize}=require('../windows/settings');
+const Layout=require('../shared/layout');
 function fixture(mode='pair',os='windows',scenario='desktop'){
  const s=normalize({rev:10});
  const displays=[{id:'pc',name:'Studio display',x:0,y:0,w:2560,h:1440,scale:1,primary:true}];
- const state={...s,version:'2.5.0',device:{id:'pc',name:'Studio PC',os:'win'},name:'Studio PC',macName:'Studio PC',macId:'pc',addresses:['192.0.2.10'],found:[],paired:null,hosts:[],guests:[],pairing:null,
+ const state={...s,updates:{current:'2.5.0',auto:false,skippedVersion:'',checking:false,latest:null,name:'',available:false,error:'',checkedAt:0,releaseUrl:'https://github.com/Sajeevanveeriah/DuoDesk/releases',releaseNotes:'',publishedAt:'',download:null,noReleases:false,skipped:false},version:'2.5.0',device:{id:'pc',name:'Studio PC',os:'win'},name:'Studio PC',macName:'Studio PC',macId:'pc',addresses:['192.0.2.10'],found:[],paired:null,hosts:[],guests:[],pairing:null,
  link:{state:'connected',macName:'MacBook',macId:'mac',os:'mac',address:'192.0.2.11',rtt:4},peer:{os:'mac',name:'MacBook',id:'mac'},connection:{connected:true,name:'MacBook',rtt:4},connected:true,
  discovery:{on:true,localNetwork:true,interfaces:[]},input:'home',kvmState:{mode:'home',linked:true,paused:false,allowed:true,helper:'',helperReady:true,mouse:true,keyboard:true,localDisplays:displays,remoteDisplays:[{...displays[0],id:'mac',w:1512,h:982}],map:{mine:displays,theirs:[],arrange:{side:'right',along:0}},lock:{on:false}},kvm:{...s.kvm,pcSide:'left',mouse:true,keyboard:true},
  clipboard:{...s.clipboard,enabled:true,imageSupport:true,peerAccepts:true,history:[{dir:'in',at:Date.now()-30000,text:'A little less switching. A little more flow.',size:48,from:'MacBook'}]},
@@ -25,9 +26,29 @@ function fixture(mode='pair',os='windows',scenario='desktop'){
  state.link={...state.link,macName:other.name,macId:other.id,os:other.os};
  state.connection={connected:true,name:other.name,rtt:4};
  state.pcScreen.extendPx=[1920,1080];
+ const shareFolder={"windows": "C:\\Users\\Demo\\DuoDesk-Shared", "mac": "/Users/demo/DuoDesk-Shared", "linux": "/home/demo/DuoDesk-Shared"}[os];
+ const downloads={"windows": "C:\\Users\\Demo\\Downloads", "mac": "/Users/demo/Downloads", "linux": "/home/demo/Downloads"}[os];
+ state.files={...state.files,shareFolder,folder:downloads,defaultFolder:downloads,received:downloads,acceptDrops:true,reveal:true,dragEdge:true,peerDrag:true,
+  current:null,batch:null,queued:0,last:null,receiving:[],recent:[{name:'Desk-notes.txt',ok:true,path:downloads+'/Desk-notes.txt',at:Date.now()-120000}],sent:[],
+  incoming:{receiving:0,last:{name:'Desk-notes.txt',ok:true,text:'Saved to Downloads',at:Date.now()-120000}},
+  clip:{error:'',offer:null,incoming:null,pasting:false},drag:{state:'',last:null},
+  smb:{busy:'',message:'',sharing:false,peer:null,macShare:'',drive:'',mountMessage:'',wifi:false,folder:shareFolder}};
+ state.smb={sharing:false,connectPc:false,folder:shareFolder,defaultFolder:shareFolder,pcOffered:false,pcShare:null,mounted:'',mountError:'',mounting:false,wifi:false,shareBusy:false,shareError:'',peer:null};
+
  state.about.app.name='DuoDesk for '+{windows:'Windows',mac:'macOS',linux:'Linux'}[os];
  state.about.pc={...state.about.pc,host:name,os:{windows:'Windows 11',mac:'macOS (renderer fixture)',linux:'Linux (renderer fixture)'}[os]};
- if(os==='mac'){state.paired=[];state.guest={hosts:[],status:{state:'connected'},pairing:null};}
+ if(os==='mac'){
+  state.paired=[];state.guest={hosts:[],status:{state:'connected',message:''},pairing:null};
+  state.input={where:'home',message:'',tapError:null,paused:false,locked:false,map:{mine:displays,theirs:[{id:'peer-display',x:0,y:0,w:1920,h:1080,scale:1}],along:0}};
+  state.displayMode='mirror';state.streamInput=true;
+  state.sharing={...state.sharing,displayId:'self-display',targetId:'self-display',bitrateMbps:30,streamMaxHeight:1080,audio:false,
+   displays:[{id:'self-display',label:'Studio display',width:2560,height:1440,pixelWidth:2560,pixelHeight:1440,virtual:false,primary:true}],
+   virtual:{enabled:true,width:1920,height:1080,hiDPI:false,hz:60,active:false,error:null}};
+  state.receive={on:false,fullScreen:false,input:true,session:null,kind:'screen',status:'off',stats:null,open:false,framegen:false,remote:{on:false,mode:'mirror',remote:true}};
+  state.papps={on:true,apps:[{id:'demo-editor',name:'Text editor (demo)',icon:''}],listing:false,launch:{},windows:[]};state.apps.offer=true;
+  state.terminal={...state.terminal,allowPc:false,connectPc:false,installed:false,remoteLogin:false,toPc:{ready:false,why:'waiting'}};
+  state.wake.womp=false;
+ }
  if(mode==='mesh'){
   state.peers=[{...other,state:'connected',connected:true,selected:true,rtt:4},{id:'lab',name:'Lab computer',os:'linux',state:'connected',connected:true,selected:false,rtt:6}];
   state.mesh={...state.mesh,selectedId:other.id,connectedIds:state.peers.map(p=>p.id)};
@@ -60,7 +81,16 @@ function fixture(mode='pair',os='windows',scenario='desktop'){
   if(mode==='mesh'){state.peers=state.peers.map(p=>({...p,state:'offline',connected:false,selected:false,rtt:null}));state.mesh={...state.mesh,selectedId:null,connectedIds:[]};}
   if(os==='mac')state.guest.status.state='not_paired';
  }
+ if(mode==='mesh'){
+  const cells={self:{x:0,y:0}};
+  for(const peer of state.peers) cells[peer.id]=peer.os==='android'?{x:0,y:1}:peer.id===other.id?{x:1,y:0}:{x:-1,y:0};
+  const layout=Layout.normalize({rev:1,by:'self',cells});
+  state.layout={...layout,grid:Layout.grid(layout),targets:Object.fromEntries(Object.keys(cells).map(id=>[id,Layout.targets(layout,id).map(c=>c.x+','+c.y)])),
+   reach:Layout.reach(layout,'self',id=>state.peers.some(p=>p.id===id&&p.connected),id=>state.peers.some(p=>p.id===id&&p.os==='android'))};
+  state.kvm.edges=state.kvmState.edges=Layout.neighbors(layout,'self');
+ }
  if(os==='linux'){state.peerSession=state.session;state.session={type:'x11',desktop:'GNOME (demo)',input:'x11',access:null,inputNote:'',helperError:''};}
+ if(mode==='pair'){const {watchers,...pairCamera}=state.camera;state.camera=pairCamera;}
  return state;
 
 }
@@ -75,7 +105,7 @@ function hubResponses(request){
   case 'contacts':return [{...base,q:'',items:[{name:'Alex (demo)',numbers:[{n:'+12025550123',label:'Mobile'}]},{name:'Sam (demo)',numbers:[{n:'+12025550124',label:'Mobile'}]}]}];
   case 'call.log':return [{...base,items:[{name:'Alex (demo)',number:'+12025550123',type:'in',dur:182,at},{name:'Sam (demo)',number:'+12025550124',type:'missed',dur:0,at:at-3600000}]}];
   case 'sms.threads':return [{...base,items:[{id:'demo-thread',name:'Alex (demo)',addrs:['+12025550123'],snippet:'The mock desk is ready.',unread:1,at}]}];
-  case 'sms.thread':return [{...base,id:request.id,before:request.before||0,more:false,items:[{id:'demo-message',body:'The mock desk is ready.',out:false,at}]}];
+  case 'sms.thread':return [{...base,id:request.id,before:request.before||0,more:false,items:[{id:'demo-reply',body:'Thanks, I will review it here.',out:true,at:at+30000},{id:'demo-message',body:'The mock desk is ready.',out:false,at}]}];
   case 'media.list':return [{...base,kind:request.kind||'all',before:request.before||'',more:false,items:[{id:'demo-photo',name:'Quiet-landscape-demo.svg',at,w:320,h:240,size:4096,album:'Demo pictures'}]}];
   case 'media.thumb':return (request.ids||[request.id]).map(id=>({...base,id,data:thumbnail}));
   case 'media.view':return [{...base,id:request.id,data:thumbnail}];

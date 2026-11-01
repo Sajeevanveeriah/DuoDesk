@@ -245,7 +245,7 @@ UI.tab({
       renderList();
       renderConv();
       loadThread(id, false);
-      box.focus();
+      box.focus({ preventScroll: true });
     }
 
     function openNew() {

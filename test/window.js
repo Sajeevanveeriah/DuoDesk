@@ -36,7 +36,22 @@ ipcMain.handle('mock:call', (event, name, args) => {
   if (section) state[section] = { ...state[section], ...args[0] };
   if (name === 'setPhone') state.phone.settings = { ...state.phone.settings, ...args[0] };
   if (name === 'setTab') state.ui.tab = args[0];
-  if (name === 'camera') state.camera = { ...state.camera, ...(args[0].do === 'share' ? { share: !!args[0].on } : { on: !!args[0].on }) };
+  if (name === 'camera') {
+    const action=args[0]||{};
+    const hadWatchers=Array.isArray(state.camera.watchers);
+    if(action.do==='on'){
+      state.camera.on=action.on===true;
+      if(!state.camera.on){Object.assign(state.camera,{sending:false,sendLive:false,viewing:false,viewShown:false,viewStatus:'',watchers:[]});state.vcam.picture=false;}
+    }else if(action.do==='share'){
+      state.camera.share=action.on===true;
+      if(!state.camera.share)Object.assign(state.camera,{sending:false,sendLive:false,watchers:[]});
+    }else if(action.do==='stop')Object.assign(state.camera,{sending:false,sendLive:false,watchers:[]});
+    else if(action.do==='close')Object.assign(state.camera,{viewing:false,viewShown:false,viewStatus:''});
+    else if(action.do==='device')state.camera.device=String(action.id||'');
+    else if(action.do==='rotate')state.vcam.rotate=((state.vcam.rotate||0)+90)%360;
+    if(!hadWatchers){const {watchers,...pairCamera}=state.camera;state.camera=pairCamera;}
+    // Listing cameras is a read: never change permission or runtime sharing state.
+  }
   if (section || ['setTab', 'setPhone', 'camera'].includes(name)) win.webContents.send('mock:onState', state);
   return { ok: true, mock: true };
 });

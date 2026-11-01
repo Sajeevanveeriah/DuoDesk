@@ -24,15 +24,30 @@ jobs:
           npm ci --prefix website
           npm test --prefix website
           npm run build --prefix website
+  renderer:
+    needs: validate
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [windows, mac, linux]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
       - name: Isolated mock-window tests
+        env:
+          DUODESK_QA_FILTER: ${{ matrix.target }}
         run: xvfb-run --auto-servernum npm run test:ui
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: renderer-validation
+          name: renderer-validation-${{ matrix.target }}
           path: test/output/
   android:
-    needs: validate
+    needs: [validate, renderer]
     uses: ./.github/workflows/build-android.yml
     with:
       release: ${{ startsWith(github.ref, 'refs/tags/v') }}

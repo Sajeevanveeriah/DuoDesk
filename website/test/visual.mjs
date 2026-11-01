@@ -12,7 +12,7 @@ const server = createServer(async (req, res) => {
   const file = path.resolve(publicDir, '.' + (pathname === '/' ? '/index.html' : pathname));
   if (!file.startsWith(publicDir + path.sep)) {res.statusCode=403;res.end();return;}
   try {
-    res.setHeader('Content-Type', ({'.html':'text/html','.css':'text/css','.js':'text/javascript','.svg':'image/svg+xml','.png':'image/png','.ttf':'font/ttf'})[path.extname(file)] || 'application/octet-stream');
+    res.setHeader('Content-Type', ({'.html':'text/html','.css':'text/css','.js':'text/javascript','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.ttf':'font/ttf'})[path.extname(file)] || 'application/octet-stream');
     res.setHeader('Content-Security-Policy', "default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'");
     res.end(await readFile(file));
   } catch {res.statusCode=404;res.end();}

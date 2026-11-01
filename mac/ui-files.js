@@ -27,7 +27,7 @@ UI.tab({
     const openBtn = UI.button('Open', () => api.openPcShare(), 'small');
     const pcRow = UI.row('Open {name}’s shared folder', '', [openBtn, pcSw]);
     // shared
-    const dragSw = UI.switch((v) => api.setFiles({ dragEdge: v }), { label: 'Drag files across the screen edge' });
+    const dragSw = UI.switch((v) => api.setFiles({ dragEdge: v }), { label: 'Send files at the screen edge' });
     const dragRow = UI.row('Release files at the screen edge', 'Drag to the outer edge, then release to copy to the other device. The pointer stays here.', [dragSw]);
     const reveal = UI.switch((v) => api.setFiles({ reveal: v }), { label: 'Show in Finder' });
     const folderRow = UI.row('Save to', '', [UI.button('Choose…', () => api.pickDropFolder(), 'small'), UI.button('Downloads', () => api.resetDropFolder(), 'small')]);

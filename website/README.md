@@ -21,7 +21,7 @@ Only verified stable release metadata is cached for 120 s in a warm function; co
 
 Only Melbourne calendar day, event kind, normalised OS and aggregate count are stored. No cookies, IPs, persistent visitor IDs, referrers or full user agents are retained by this analytics code. Counts are events, not unique visitors or completed installs. Public request counts can include bots. Hosting providers may retain operational logs separately. Browser privacy signals skip the page-view request and download counting.
 
-`public/images/duodesk-mock-window.png` is an inspected, populated desktop test-window capture, copied byte-for-byte from the root harness output. The page labels it as an actual app-window capture with mock device data, not a physical cross-device test. A fallback message appears if the image is unavailable.
+`public/images/duodesk-mock-window.jpg` is an inspected, populated desktop test-window capture, copied byte-for-byte from the root harness output. The page labels it as an actual app-window capture with mock device data, not a physical cross-device test. A fallback message appears if the image is unavailable.
 
 Sources used for implementation: Netlify Functions coding context, and https://neon.com/docs/serverless/serverless-driver. No website deploy or database execution is performed by the implementation worker.
 

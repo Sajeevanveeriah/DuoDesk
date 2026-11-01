@@ -62,8 +62,8 @@ UI.tab({
     const copyRow = UI.row('Copy', 'Select files in File Explorer first', [copyRec]);
     const pasteRow = UI.row('Paste', '', [pasteRec]);
 
-    const edgeDrag = sw('Drag files across the screen edge', (v) => api.setFiles({ edgeDrag: v }));
-    const edgeRow = UI.row('Drag files between computers', '', [edgeDrag]);
+    const edgeDrag = sw('Send files at the screen edge', (v) => api.setFiles({ edgeDrag: v }));
+    const edgeRow = UI.row('Send files at the screen edge', '', [edgeDrag]);
     const cancelBtn = UI.button('Cancel', () => api.cancelDrop(), 'small');
     const outRow = UI.row('', '', [cancelBtn]);
     const inRow = UI.row('', '');
@@ -103,7 +103,7 @@ UI.tab({
         : ck.incoming ? p.them + ' copied ' + (ck.incoming.name || ck.incoming.items + ' items') + ' · press ' + UI.keysLabel(f.pasteKeys)
           : 'Into the app in front (a chat, a mail…), or the File Explorer folder in front, else the Desktop');
       edgeDrag.set(f.edgeDrag);
-      edgeRow.setHint(f.edgeDrag && f.macDrags === false ? 'Turned off on {name}' : f.edgeDrag ? 'Drag through the screen edge and drop anywhere' : '');
+      edgeRow.setHint(f.edgeDrag && f.macDrags === false ? 'Turned off on {name}' : f.edgeDrag ? 'Drag to the outer edge, then release to copy. The pointer stays here.' : '');
       mount.set(f.mountMac);
       openBtn.hidden = !m.drive && !m.wifi;
       macDrive.setHint(m.mountMessage || (!f.mountMac ? '' : m.drive ? 'Drive ' + m.drive : m.busy === 'mount' ? 'Connecting…'

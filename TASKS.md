@@ -10,7 +10,7 @@ Source: TwinDesk 7c57646fa146108f5d0b000ef08893c9c5ebbc4e. Working copy is this 
 
 ## Delivered infrastructure
 
-- GitHub: https://github.com/Sajeevanveeriah/DuoDesk (repository created; source push pending).
+- GitHub: https://github.com/Sajeevanveeriah/DuoDesk (source pushed, noreply author).
 - Netlify: https://duodesk.netlify.app, site f74b76b4-423b-428f-90d9-89cda6b063c3. Deployment 6ae6817419dd81fd41934bf8 ready/public; only website/public plus functions deployed. No Git auto-deployment.
 - Neon: patient-darkness-71096266, production branch br-frosty-sunset-ak8duubc, database duodesk. User explicitly approved website/schema.sql; CREATE TABLE succeeded. No secret was requested/read. Saj chose to leave analytics disabled; do not request/set runtime database credentials or dashboard password.
 
@@ -23,12 +23,12 @@ Source: TwinDesk 7c57646fa146108f5d0b000ef08893c9c5ebbc4e. Working copy is this 
 - [x] Aurora page shell, live header/status, Ctrl+K actions, Tips and opt-in Feedback draft.
 - [x] Six isolated Electron renderer combinations tested with synthetic devices, no reported rendering errors; clipboard command acts on fake backend.
 - [x] Website API/auth tests and visual checks; first deployment verified via HTTP.
-- [ ] Expand renderer fixtures to offline and phone states; current tab enumeration can redirect hidden phone-only pages.
-- [ ] Re-run complete shared suite after log rotation fix and final integrations.
-- [ ] Commit/push reviewed changes; dispatch CI and fix failures.
+- [x] Expand renderer fixtures: 18 latest cases and 372 visible pages; additional 12 connected controls cases and 261 settings panels. Simulations only.
+- [x] Shared suite after log rotation fix: 38 scripts passed; six feedback-copy handler tests also passed.
+- [ ] Complete CI: source pushed; run 41256492915 passed validation but Android setup requested obsolete SDK tools. Source fix selects platform-tools; next run required.
 - [ ] Build/install release packages, public v2.5.0 and download-redirect verification.
 - [ ] Configure stable Android signing secrets; analytics deliberately remains disabled.
-- [ ] Real Windows/Mac keyboard/mouse/clipboard tests; MacBook access unavailable in SentinelX inventory.
+- [ ] Real cross-device tests: existing Linux host access verified after SSH re-authentication. The connected MacBook hardware runs Ubuntu. Physical macOS testing remains separate and unverified.
 - [ ] Root README/release documentation: policy block, no retry/workaround.
 
 ## Concrete blocks and limits

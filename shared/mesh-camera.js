@@ -48,7 +48,7 @@ class MeshCamera {
   }
   connected(id) { const session = id && this.hub.sessions.get(id); return !!session && session.connected; }
   ble(id) { const session = id && this.hub.sessions.get(id); return !!session && session.transport === 'ble'; }
-  name(id) { const session = id && this.hub.sessions.get(id); return session && (session.name || (session.ctx && session.ctx.name)) || id || 'Device'; }
+  name(id) { const session = id && this.hub.sessions.get(id); return session && ((typeof session.displayName === 'function' && session.displayName()) || session.name || (session.ctx && session.ctx.name)) || id || 'Device'; }
   get share() { return this.cfg().on !== false && this.cfg().share === true; }
   sendPolicy(id) { for (const peer of id ? [id] : this.hub.bus.connectedIds()) this.hub.bus.send(peer, { t: T.CAM_POLICY, share: this.share }); }
   async setShare(on, askFirst = this.askPermission) {

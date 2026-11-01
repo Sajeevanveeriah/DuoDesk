@@ -54,10 +54,10 @@ fetch('/api/release-status').then(r => r.json()).then(data => {
   releaseAvailable = data.available === true;
   downloadChoice();
   $('release-label').textContent = data.available ? `Public stable release: ${data.version}` : 'In development. A public stable installer is not available yet.';
+  if (data.analyticsEnabled === true && navigator.doNotTrack !== '1' && !navigator.globalPrivacyControl) {
+    fetch('/api/view', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ os: detected }), keepalive: true }).catch(() => {});
+  }
 }).catch(() => { $('release-label').textContent = 'Release availability could not be checked. Downloads are verified when requested.'; });
-if (navigator.doNotTrack !== '1' && !navigator.globalPrivacyControl) {
-  fetch('/api/view', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ os: detected }), keepalive: true }).catch(() => {});
-}
 const shot = $('app-screenshot');
 function showShot() { if (shot.naturalWidth) { $('app-figure').hidden = false; $('screenshot-pending').hidden = true; } }
 shot.addEventListener('load', showShot); if (shot.complete) showShot();

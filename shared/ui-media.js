@@ -81,7 +81,8 @@ UI.tab({
       saveBtn.disabled = !chosen.size;
       saveBtn.textContent = chosen.size ? `Save ${chosen.size} to ${UI.fill('{me}')}` : 'Save';
       for (const [id, t] of tiles) t.classList.toggle('chosen', chosen.has(id));
-      status.textContent = items.length ? `${items.length}${more ? '+' : ''} ${kind === 'videos' ? 'videos' : kind === 'all' ? 'items' : kind}` : '';
+      const noun = kind === 'videos' ? 'video' : kind === 'all' ? 'item' : 'photo';
+      status.textContent = items.length ? `${items.length}${more ? '+' : ''} ${noun}${items.length === 1 && !more ? '' : 's'}` : '';
     }
 
     // The tiles on screen get their pictures, those first (what scrolled past is dropped).
