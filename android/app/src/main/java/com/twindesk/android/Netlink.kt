@@ -31,10 +31,11 @@ class Direct(private val ctx: Context) {
     private val ch: WifiP2pManager.Channel? by lazy { mgr?.initialize(ctx, Looper.getMainLooper(), null) }
 
     companion object {
-        fun permission(): String = if (Build.VERSION.SDK_INT >= 33) Manifest.permission.NEARBY_WIFI_DEVICES else Manifest.permission.ACCESS_FINE_LOCATION
+        fun permissions(): Array<String> = if (Build.VERSION.SDK_INT >= 33) arrayOf(Manifest.permission.NEARBY_WIFI_DEVICES)
+        else arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
     }
 
-    fun allowed() = ctx.checkSelfPermission(permission()) == PackageManager.PERMISSION_GRANTED
+    fun allowed() = permissions().all { ctx.checkSelfPermission(it) == PackageManager.PERMISSION_GRANTED }
     fun supported() = mgr != null && ctx.packageManager.hasSystemFeature(PackageManager.FEATURE_WIFI_DIRECT)
     fun can() = supported() && allowed()
 

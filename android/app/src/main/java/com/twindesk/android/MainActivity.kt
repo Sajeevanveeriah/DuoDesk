@@ -658,7 +658,7 @@ private fun BleSwitch(core: Core, askHint: String, first: Boolean = false) {
     val ctx = LocalContext.current
     val name = them(core)
     val link = core.link
-    val allowed = (Ble.permissions() + BleServe.permissions() + Direct.permission()).all { ctx.checkSelfPermission(it) == android.content.pm.PackageManager.PERMISSION_GRANTED }
+    val allowed = (Ble.permissions() + BleServe.permissions() + Direct.permissions()).all { ctx.checkSelfPermission(it) == android.content.pm.PackageManager.PERMISSION_GRANTED }
     SwitchRow("Bluetooth with computers", when {
         !core.bleOn -> "Only computers on this network or a USB cable connect"
         !core.ble.radioOn -> "Bluetooth is off on this device"
@@ -1469,7 +1469,7 @@ private fun GeneralPage(core: Core, v: Int) {
     fun Setup(label: String, hint: String, done: Boolean, action: String, first: Boolean = false, onClick: () -> Unit) =
         MacRow(label, hint, first) { if (done) Pill("Allowed", "good") else Primary(action, onClick) }
     // Bluetooth and Wi-Fi Direct, for a computer not on this network.
-    val nearbyPerms = (Ble.permissions() + BleServe.permissions() + Direct.permission()).distinct().toTypedArray()
+    val nearbyPerms = (Ble.permissions() + BleServe.permissions() + Direct.permissions()).distinct().toTypedArray()
     val nearbyAllowed = nearbyPerms.all { ctx.checkSelfPermission(it) == android.content.pm.PackageManager.PERMISSION_GRANTED }
     val askNearby = androidx.activity.compose.rememberLauncherForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions(),

@@ -165,8 +165,7 @@ class AdbTile : TileService() {
         }
         val i = Intent(android.provider.Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS)
             .putExtra(":settings:fragment_args_key", "toggle_adb_wireless").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        if (android.os.Build.VERSION.SDK_INT >= 34) startActivityAndCollapse(android.app.PendingIntent.getActivity(this, 1, i, android.app.PendingIntent.FLAG_IMMUTABLE))
-        else @Suppress("DEPRECATION") startActivityAndCollapse(i)
+        launchFromTile(i, 1)
     }
 }
 
@@ -175,11 +174,24 @@ class AdbTile : TileService() {
 class ClipTile : TileService() {
     override fun onClick() {
         val i = Intent(this, ClipActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        if (android.os.Build.VERSION.SDK_INT >= 34) {
-            startActivityAndCollapse(android.app.PendingIntent.getActivity(this, 0, i, android.app.PendingIntent.FLAG_IMMUTABLE))
-        } else {
-            @Suppress("DEPRECATION")
-            startActivityAndCollapse(i)
-        }
+        launchFromTile(i, 0)
     }
+}
+
+private fun TileService.launchFromTile(intent: Intent, requestCode: Int) {
+    if (android.os.Build.VERSION.SDK_INT >= 34) {
+        startActivityAndCollapse(android.app.PendingIntent.getActivity(this, requestCode, intent, android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT))
+    } else {
+        launchFromLegacyTile(intent)
+    }
+}
+
+// The PendingIntent overload was added in API 34. Android 10-13 require the Intent overload.
+// Keep this single compatibility call guarded; never execute it on Android 14 or newer.
+// https://developer.android.com/reference/android/service/quicksettings/TileService
+@android.annotation.SuppressLint("StartActivityAndCollapseDeprecated")
+@Suppress("DEPRECATION")
+private fun TileService.launchFromLegacyTile(intent: Intent) {
+    check(android.os.Build.VERSION.SDK_INT < 34)
+    startActivityAndCollapse(intent)
 }

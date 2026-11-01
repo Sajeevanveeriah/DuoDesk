@@ -270,13 +270,22 @@ class DevCtl(core: Core) : Feature(core) {
         runCatching {
             val tm = ctx.getSystemService(TelephonyManager::class.java)
             if (tm != null && tm.phoneType != TelephonyManager.PHONE_TYPE_NONE) {
-                val gen = if (granted(Manifest.permission.READ_PHONE_STATE)) @Suppress("DEPRECATION") when (tm.dataNetworkType) {
+                // Permission may be revoked after the check; keep the rest of the device info usable.
+                val networkType = if (ContextCompat.checkSelfPermission(ctx, Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED) {
+                    try {
+                        tm.dataNetworkType
+                    } catch (_: SecurityException) {
+                        TelephonyManager.NETWORK_TYPE_UNKNOWN
+                    }
+                } else TelephonyManager.NETWORK_TYPE_UNKNOWN
+                @Suppress("DEPRECATION")
+                val gen = when (networkType) {
                     TelephonyManager.NETWORK_TYPE_NR -> "5G"
                     TelephonyManager.NETWORK_TYPE_LTE -> "4G"
                     TelephonyManager.NETWORK_TYPE_HSPAP, TelephonyManager.NETWORK_TYPE_HSPA, TelephonyManager.NETWORK_TYPE_UMTS, TelephonyManager.NETWORK_TYPE_HSDPA, TelephonyManager.NETWORK_TYPE_HSUPA -> "3G"
                     TelephonyManager.NETWORK_TYPE_EDGE, TelephonyManager.NETWORK_TYPE_GPRS -> "2G"
                     else -> ""
-                } else ""
+                }
                 o.put("cell", listOf(tm.networkOperatorName.orEmpty(), gen).filter { it.isNotBlank() }.joinToString(" · "))
                 if (Build.VERSION.SDK_INT >= 28) tm.signalStrength?.level?.let { o.put("signal", listOf("None", "Weak", "Fair", "Good", "Excellent")[it.coerceIn(0, 4)]) }
             }

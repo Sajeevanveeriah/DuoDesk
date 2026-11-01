@@ -67,6 +67,8 @@ dependencies {
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.ui:ui")
     implementation("androidx.activity:activity-compose:1.13.0")
+    // The code-scanner dependency can bring an older Fragment; ActivityResult needs 1.3+.
+    implementation("androidx.fragment:fragment:1.8.9")
     implementation("com.squareup.okhttp3:okhttp:5.5.0")
     implementation("com.google.android.gms:play-services-code-scanner:16.1.0") // Scan QR code (pairing): Google's scanner, no camera permission
 }

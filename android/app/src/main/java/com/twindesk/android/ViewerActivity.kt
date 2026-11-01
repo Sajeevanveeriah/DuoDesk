@@ -67,7 +67,15 @@ class ViewerActivity : ComponentActivity() {
         val m = resources.displayMetrics
         // Physical pixels of this screen, landscape (the viewer is held landscape: a computer's
         // screen is, and Windows' virtual monitor takes no portrait size): the computer makes Extend this shape.
-        val b = windowManager.currentWindowMetrics.bounds
+        val b = if (android.os.Build.VERSION.SDK_INT >= 30) {
+            windowManager.currentWindowMetrics.bounds
+        } else {
+            // Android 10 has no WindowMetrics. Read the physical display for its full-screen viewer.
+            val legacy = android.util.DisplayMetrics()
+            @Suppress("DEPRECATION")
+            windowManager.defaultDisplay.getRealMetrics(legacy)
+            android.graphics.Rect(0, 0, legacy.widthPixels, legacy.heightPixels)
+        }
         val w = b.width().coerceAtLeast(m.widthPixels)
         val hpx = b.height().coerceAtLeast(m.heightPixels)
         Core.get(this).screen.attach(h, maxOf(w, hpx), minOf(w, hpx))

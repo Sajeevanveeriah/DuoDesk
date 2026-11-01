@@ -12,6 +12,7 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothGatt
+import android.bluetooth.BluetoothStatusCodes
 import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothGattDescriptor
 import android.bluetooth.BluetoothGattServer
@@ -248,7 +249,7 @@ class BleServe(
             repeat(100) {
                 if (ok) return@repeat
                 ok = runCatching {
-                    if (Build.VERSION.SDK_INT >= 33) s.notifyCharacteristicChanged(dev, c, false, v) == BluetoothGatt.GATT_SUCCESS
+                    if (Build.VERSION.SDK_INT >= 33) s.notifyCharacteristicChanged(dev, c, false, v) == BluetoothStatusCodes.SUCCESS
                     else {
                         @Suppress("DEPRECATION") c.value = v
                         @Suppress("DEPRECATION") s.notifyCharacteristicChanged(dev, c, false)

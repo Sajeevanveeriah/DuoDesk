@@ -11,6 +11,7 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothGatt
+import android.bluetooth.BluetoothStatusCodes
 import android.bluetooth.BluetoothGattCallback
 import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothGattDescriptor
@@ -55,7 +56,7 @@ class Ble(
 
         fun permissions(): Array<String> = if (Build.VERSION.SDK_INT >= 31)
             arrayOf(Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT)
-        else arrayOf(Manifest.permission.ACCESS_FINE_LOCATION)
+        else arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
     }
 
     // When the computer last sent anything down a pipe: a big message takes a while through
@@ -386,12 +387,12 @@ class Ble(
 
         @Suppress("DEPRECATION")
         private fun writeChr(g: BluetoothGatt, c: BluetoothGattCharacteristic, v: ByteArray, type: Int): Boolean =
-            if (Build.VERSION.SDK_INT >= 33) g.writeCharacteristic(c, v, type) == BluetoothGatt.GATT_SUCCESS
+            if (Build.VERSION.SDK_INT >= 33) g.writeCharacteristic(c, v, type) == BluetoothStatusCodes.SUCCESS
             else { c.writeType = type; c.value = v; g.writeCharacteristic(c) }
 
         @Suppress("DEPRECATION")
         private fun writeDescriptor(g: BluetoothGatt, d: BluetoothGattDescriptor, v: ByteArray): Boolean =
-            if (Build.VERSION.SDK_INT >= 33) g.writeDescriptor(d, v) == BluetoothGatt.GATT_SUCCESS
+            if (Build.VERSION.SDK_INT >= 33) g.writeDescriptor(d, v) == BluetoothStatusCodes.SUCCESS
             else { d.value = v; g.writeDescriptor(d) }
     }
 }
