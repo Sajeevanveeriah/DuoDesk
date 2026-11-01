@@ -94,7 +94,7 @@ async function privacy(page, prefix) {
       assert.equal(audit.nativeLaunchAttempts.length,0,'renderer never launches native helpers');
     } catch(error) { errors.push(error.stack || error.message); if(page) await page.screenshot({type:'jpeg',quality:80,scale:'css',animations:'disabled',path:path.join(output,prefix+'-failure.jpg')}).catch(()=>{}); }
     finally { if(app) await app.close().catch(error=>errors.push('Failed to close isolated app: '+error.message)); }
-    const item={os,mode,scenario,host:'Windows; target renderer simulated',captured,skipped,errors:[...new Set(errors)]};report.push(item);
+    const item={os,mode,scenario,host:({win32:'Windows',darwin:'macOS',linux:'Linux'}[process.platform]||process.platform)+'; target renderer simulated',captured,skipped,errors:[...new Set(errors)]};report.push(item);
     console.log(`${prefix}: ${captured.length} visible pages, ${skipped.length} explicitly skipped, ${item.errors.length} errors`);
     if(item.errors.length) console.log(item.errors.join('\n'));
     fs.writeFileSync(path.join(output,'results-expanded'+(process.env.DUODESK_QA_FILTER?'--'+process.env.DUODESK_QA_FILTER.replace(/[^a-z-]/g,''):'')+'.json'),JSON.stringify(report,null,2));

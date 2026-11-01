@@ -31,4 +31,5 @@ api.setReZume = api.setRezume; // the shared ReZume page (shared/ui-rezume.js) s
 // The one action with two arguments (Camera › Start and Window: {facing, show}): sent as one.
 api.phoneCamera = (open, opts) => ipcRenderer.send('phoneCamera', { open, opts });
 
+api.copyText = text => ipcRenderer.invoke('copyText', text);
 contextBridge.exposeInMainWorld('macshare', api);

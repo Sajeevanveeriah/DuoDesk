@@ -216,7 +216,9 @@ function setupIpc(ctx) {
       ctx.discovery.refresh();
     },
     copyText(text) {
-      if (typeof text === 'string' && text.length < 200) clipboard.writeText(text);
+      if (typeof text !== 'string' || text.length > 16384) throw new Error('Copy text is invalid or too long');
+      clipboard.writeText(text);
+      return true;
     },
     // Ask first (that puts TwinDesk in the System Settings list), then open the pane.
     async allowPermission(kind) {
@@ -619,6 +621,7 @@ function setupIpc(ctx) {
     },
   };
 
+  ipcMain.handle('copyText', (_e, text) => actions.copyText(text));
   ipcMain.handle('getState', () => ctx.state);
   ipcMain.handle('phoneAssets', () => ctx.phone.assetsView());
   ipcMain.handle('qrPair', () => (ctx.qrPair ? ctx.qrPair() : { url: '' })); // Connection: the phone pairing QR code's link

@@ -56,7 +56,7 @@ function setupIpc(ctx) {
   handle('adbQr', (on) => ctx.adbQr(on === true)); // wireless debugging: pair with a QR code // Connection: the phone pairing QR code's link
   handle('importCancel', () => ctx.explorer() && ctx.explorer().cancel()); // Phone Files: stop importing into Explorer's folder
   handle('deviceDo', (c) => c && typeof c === 'object' && ctx.devctl() && ctx.devctl().do(c)); // Overview: ring, lock, quick settings… (shared/devctl.js)
-  handle('copyText', (text) => typeof text === 'string' && text.length < 1000 && clipboard.writeText(text));
+  handle('copyText', (text) => { if (typeof text !== 'string' || text.length > 16384) throw new Error('Copy text is invalid or too long'); clipboard.writeText(text); return true; });
   handle('confirmCode', () => link.confirmCode());
   handle('cancelPair', () => { ctx.cancelPhoneInvite(); link.cancelPair(); });
   handle('forget', () => link.forget());

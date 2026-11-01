@@ -60,6 +60,7 @@ function fixture(mode='pair',os='windows',scenario='desktop'){
   if(mode==='mesh'){state.peers=state.peers.map(p=>({...p,state:'offline',connected:false,selected:false,rtt:null}));state.mesh={...state.mesh,selectedId:null,connectedIds:[]};}
   if(os==='mac')state.guest.status.state='not_paired';
  }
+ if(os==='linux'){state.peerSession=state.session;state.session={type:'x11',desktop:'GNOME (demo)',input:'x11',access:null,inputNote:'',helperError:''};}
  return state;
 
 }

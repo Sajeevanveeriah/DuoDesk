@@ -32,4 +32,5 @@ for (const name of ACTIONS) api[name] = (arg) => ipcRenderer.send(name, arg);
 api.setStreamTarget = (id, choice) => ipcRenderer.send('setStreamTarget', { id, choice });
 api.phoneCamera = (open, opts) => ipcRenderer.send('phoneCamera', { open, opts });
 
+api.copyText = text => ipcRenderer.invoke('copyText', text);
 contextBridge.exposeInMainWorld('macshare', api);
