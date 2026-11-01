@@ -1,6 +1,11 @@
 name: Build Linux
 on:
+  workflow_dispatch:
   workflow_call:
+    inputs:
+      bundle_android:
+        type: boolean
+        default: true
 permissions:
   contents: read
 jobs:
@@ -12,6 +17,7 @@ jobs:
         with:
           node-version: 22
       - uses: actions/download-artifact@v4
+        if: inputs.bundle_android
         with:
           name: duodesk-android
           path: android/dist

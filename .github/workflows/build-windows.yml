@@ -1,6 +1,11 @@
 name: Build Windows
 on:
+  workflow_dispatch:
   workflow_call:
+    inputs:
+      bundle_android:
+        type: boolean
+        default: true
     secrets:
       WIN_CSC_LINK:
         required: false
@@ -17,6 +22,7 @@ jobs:
         with:
           node-version: 22
       - uses: actions/download-artifact@v4
+        if: inputs.bundle_android
         with:
           name: duodesk-android
           path: android/dist
