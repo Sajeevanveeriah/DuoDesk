@@ -829,3 +829,7 @@ Copyright © 2026 inukaasith.
 
 Parts are adapted from [DeskPad](https://github.com/Stengo/DeskPad) (MIT). See [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES)
 for details.
+
+## Project handoff
+
+Read the [project handoff](HANDOFF.md) for current work, checks and the next step.
