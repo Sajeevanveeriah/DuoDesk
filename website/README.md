@@ -26,3 +26,7 @@ Only Melbourne calendar day, event kind, normalised OS and aggregate count are s
 Sources used for implementation: Netlify Functions coding context, and https://neon.com/docs/serverless/serverless-driver. No website deploy or database execution is performed by the implementation worker.
 
 Saj has chosen to leave analytics disabled for now. No runtime database URL or dashboard password is configured; the approved schema remains available for later activation.
+
+## Project handoff
+
+Read the [project handoff](../HANDOFF.md) for current work, checks and the next step.
